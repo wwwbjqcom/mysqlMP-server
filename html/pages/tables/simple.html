@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>AdminLTE 2 | Simple Tables</title>
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <!-- Bootstrap 3.3.7 -->
+    <link rel="stylesheet" href="../../bower_components/bootstrap/dist/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="../../bower_components/font-awesome/css/font-awesome.min.css">
+    <!-- Ionicons -->
+    <link rel="stylesheet" href="../../bower_components/Ionicons/css/ionicons.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="../../dist/css/AdminLTE.min.css">
+    <!-- AdminLTE Skins. Choose a skin from the css/skins
+         folder instead of downloading all of them to reduce the load. -->
+    <link rel="stylesheet" href="../../dist/css/skins/_all-skins.min.css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Google Font -->
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+</head>
+<body class="hold-transition skin-blue sidebar-mini">
+<div class="wrapper">
+
+    <header class="main-header">
+        <!-- Logo -->
+        <a href="../../index.html" class="logo">
+            <!-- mini logo for sidebar mini 50x50 pixels -->
+            <span class="logo-mini"><b>DB</b>ManageSystem</span>
+            <!-- logo for regular state and mobile devices -->
+            <span class="logo-lg"><b>DB</b>ManageSystem</span>
+        </a>
+        <!-- Header Navbar: style can be found in header.less -->
+        <nav class="navbar navbar-static-top">
+            <!-- Sidebar toggle button-->
+            <a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+
+            <div class="navbar-custom-menu">
+                <ul class="nav navbar-nav">
+                    <!-- Messages: style can be found in dropdown.less-->
+                    <li class="dropdown messages-menu">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-envelope-o"></i>
+                            <span class="label label-success">4</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li class="header">test 1 messages</li>
+                            <li>
+                                <!-- inner menu: contains the actual data -->
+                                <ul class="menu">
+                                    <li><!-- start message -->
+                                        <a href="#">
+                                            <div class="pull-left">
+                                                <img src="../../dist/img/user2-160x160.jpg" class="img-circle"
+                                                     alt="User Image">
+                                            </div>
+                                            <h4>
+                                                消息测试
+                                                <small><i class="fa fa-clock-o"></i> 5 mins</small>
+                                            </h4>
+                                            <p>Why not buy a new awesome theme?</p>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="footer"><a href="#">See All Messages</a></li>
+                        </ul>
+                    </li>
+                    <!-- Notifications: style can be found in dropdown.less -->
+                    <li class="dropdown notifications-menu">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-bell-o"></i>
+                            <span class="label label-warning">10</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li class="header">You have 10 notifications</li>
+                            <li>
+                                <!-- inner menu: contains the actual data -->
+                                <ul class="menu">
+                                    <li>
+                                        <a href="#">
+                                            <i class="fa fa-users text-aqua"></i>test123456666
+                                        </a>
+                                    </li>
+
+                                </ul>
+                            </li>
+                            <li class="footer"><a href="#">View all</a></li>
+                        </ul>
+                    </li>
+                    <!-- Tasks: style can be found in dropdown.less -->
+                    <li class="dropdown tasks-menu">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="fa fa-flag-o"></i>
+                            <span class="label label-danger">9</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li class="header">You have 9 tasks</li>
+                            <li>
+                                <!-- inner menu: contains the actual data -->
+                                <ul class="menu">
+                                    <li><!-- Task item -->
+                                        <a href="#">
+                                            <h3>
+                                                测试1234
+                                                <small class="pull-right">20%</small>
+                                            </h3>
+                                            <div class="progress xs">
+                                                <div class="progress-bar progress-bar-aqua" style="width: 20%"
+                                                     role="progressbar"
+                                                     aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                                                    <span class="sr-only">测试</span>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <!-- end task item -->
+                                </ul>
+                            </li>
+                            <li class="footer">
+                                <a href="#">View all tasks</a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- User Account: style can be found in dropdown.less -->
+                    <li class="dropdown user user-menu">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                            <img src="../../dist/img/user2-160x160.jpg" class="user-image" alt="User Image">
+                            <span class="hidden-xs">DBUser</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- User image -->
+                            <li class="user-header">
+                                <img src="../../dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
+
+                                <p>
+                                    <small>DBUser</small>
+                                </p>
+                            </li>
+                            <!-- Menu Body -->
+                            <li class="user-body">
+                                <!--<div class="row">-->
+                                <!--<div class="col-xs-4 text-center">-->
+                                <!--<a href="#">Followers</a>-->
+                                <!--</div>-->
+                                <!--<div class="col-xs-4 text-center">-->
+                                <!--<a href="#">Sales</a>-->
+                                <!--</div>-->
+                                <!--<div class="col-xs-4 text-center">-->
+                                <!--<a href="#">Friends</a>-->
+                                <!--</div>-->
+                                <!--</div>-->
+                                <!-- /.row -->
+                            </li>
+                            <!-- Menu Footer-->
+                            <li class="user-footer">
+                                <div class="pull-left">
+                                    <!--<a href="#" class="btn btn-default btn-flat">Profile</a>-->
+                                </div>
+                                <div class="pull-right">
+                                    <a href="#" class="btn btn-default btn-flat">退出登录</a>
+                                </div>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- Control Sidebar Toggle Button -->
+                    <!--<li>-->
+                    <!--<a href="#" data-toggle="control-sidebar"><i class="fa fa-gears"></i></a>-->
+                    <!--</li>-->
+                </ul>
+            </div>
+        </nav>
+    </header>
+    <!-- Left side column. contains the logo and sidebar -->
+    <aside class="main-sidebar">
+        <!-- sidebar: style can be found in sidebar.less -->
+        <section class="sidebar">
+            <!-- Sidebar user panel -->
+            <div class="user-panel">
+                <div class="pull-left image">
+                    <img src="../../dist/img/user2-160x160.jpg" class="img-circle" alt="User Image">
+                </div>
+                <div class="pull-left info">
+                    <p>DBUser</p>
+                    <a href="#"><i class="fa fa-circle text-success"></i> Online</a>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu" data-widget="tree">
+                <li class="header">MAIN FUNCTIONS</li>
+                <li class="treeview">
+                    <a href="#">
+                        <i class="fa fa-dashboard"></i> <span> 导航页 </span>
+                        <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <li><a href="../../index.html"><i class="fa fa-circle-o"></i> 导航页 </a></li>
+                        <!--<li><a href="../../index2.html"><i class="fa fa-circle-o"></i> Dashboard v2</a></li>-->
+                    </ul>
+                </li>
+                <li class="treeview active">
+                    <a href="#">
+                        <i class="fa fa-table"></i> <span>Tables</span>
+                        <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+                    </a>
+                    <ul class="treeview-menu">
+                        <li class="active"><a href="simple.html"><i class="fa fa-circle-o"></i> Simple tables</a></li>
+                        <!--<li><a href="data.html"><i class="fa fa-circle-o"></i> Data tables</a></li>-->
+                    </ul>
+                </li>
+            </ul>
+        </section>
+        <!-- /.sidebar -->
+    </aside>
+
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <section class="content-header">
+            <h1>
+                Simple Tables
+                <small><a href="#"></i> Home</a></small>
+                <small><a href="#">Tables</a></small>
+                <small class="active">Simple</small>
+            </h1>
+            <ol class="breadcrumb"><a href="#" data-toggle="modal" data-target="#modal_add_node"><i class="fa fa-plus"></i>添加</a></ol>
+        </section>
+
+        <!-- Main content -->
+        <section class="content">
+            <!-- /.row -->
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box">
+                        <div class="box-header">
+                            <h3 class="box-title">MySQL</h3>
+
+                            <div class="box-tools">
+                                <div class="input-group input-group-sm hidden-xs" style="width: 150px;">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /.box-header -->
+                        <div class="box-body table-responsive no-padding">
+                            <table class="table table-hover" id="node_tb_test">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>host</th>
+                                    <th>db_port</th>
+                                    <th>status</th>
+                                    <th>role</th>
+                                    <th>action</th>
+                                </tr>
+                                <tr>
+                                    <td>183</td>
+                                    <td>John Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-success">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                    <td><span>编辑</span> <span>维护</span> <span>主从切换</span></td>
+                                </tr>
+                                <tr>
+                                    <td>219</td>
+                                    <td>Alexander Pierce</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-warning">Pending</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                    <td><span>编辑</span> <span>维护</span> <span>主从切换</span></td>
+                                </tr>
+                                <tr>
+                                    <td>657</td>
+                                    <td>Bob Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-primary">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                    <td><span>编辑</span> <span>维护</span> <span>主从切换</span></td>
+                                </tr>
+                                <tr>
+                                    <td>175</td>
+                                    <td>Mike Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-danger">Denied</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                    <td><span>编辑</span> <span>维护</span> <span>主从切换</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <!-- /.box-body -->
+                    </div>
+                    <!-- /.box -->
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box">
+                        <div class="box-header">
+                            <h3 class="box-title">MYSQL2</h3>
+                        </div>
+                        <!-- /.box-header -->
+                        <div class="box-body table-responsive no-padding">
+                            <table class="table table-hover" id="node_tb_test2">
+
+                            </table>
+                        </div>
+                        <!-- /.box-body -->
+                    </div>
+                    <!-- /.box -->
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box">
+                        <div class="box-header">
+                            <h3 class="box-title">Responsive Hover Table</h3>
+
+                            <div class="box-tools">
+                                <div class="input-group input-group-sm hidden-xs" style="width: 150px;">
+                                    <input type="text" name="table_search" class="form-control pull-right"
+                                           placeholder="Search">
+
+                                    <div class="input-group-btn">
+                                        <button type="submit" class="btn btn-default"><i class="fa fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /.box-header -->
+                        <div class="box-body table-responsive no-padding">
+                            <table class="table table-hover">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                                <tr>
+                                    <td>183</td>
+                                    <td>John Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-success">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>219</td>
+                                    <td>Alexander Pierce</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-warning">Pending</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>657</td>
+                                    <td>Bob Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-primary">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>175</td>
+                                    <td>Mike Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-danger">Denied</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <!-- /.box-body -->
+                    </div>
+                    <!-- /.box -->
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-12">
+                    <div class="box">
+                        <div class="box-header">
+                            <h3 class="box-title">Responsive Hover Table</h3>
+
+                            <div class="box-tools">
+                                <div class="input-group input-group-sm hidden-xs" style="width: 150px;">
+                                    <input type="text" name="table_search" class="form-control pull-right"
+                                           placeholder="Search">
+
+                                    <div class="input-group-btn">
+                                        <button type="submit" class="btn btn-default"><i class="fa fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /.box-header -->
+                        <div class="box-body table-responsive no-padding">
+                            <table class="table table-hover">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                                <tr>
+                                    <td>183</td>
+                                    <td>John Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-success">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>219</td>
+                                    <td>Alexander Pierce</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-warning">Pending</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>657</td>
+                                    <td>Bob Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-primary">Approved</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                                <tr>
+                                    <td>175</td>
+                                    <td>Mike Doe</td>
+                                    <td>11-7-2014</td>
+                                    <td><span class="label label-danger">Denied</span></td>
+                                    <td>Bacon ipsum dolor sit amet salami venison chicken flank fatback doner.</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <!-- /.box-body -->
+                    </div>
+                    <!-- /.box -->
+                </div>
+            </div>
+        </section>
+        <!-- /.content -->
+    </div>
+    <!-- /.content-wrapper -->
+    <footer class="main-footer">
+        <div class="pull-right hidden-xs">
+            <b>Version</b> 2.4.18
+        </div>
+        <strong>Copyright &copy; 2014-2019 <a href="https://adminlte.io">AdminLTE</a>.</strong> All rights
+        reserved.
+    </footer>
+
+    <!-- Control Sidebar -->
+    <aside class="control-sidebar control-sidebar-dark">
+        <!-- Create the tabs -->
+        <ul class="nav nav-tabs nav-justified control-sidebar-tabs">
+            <li><a href="#control-sidebar-home-tab" data-toggle="tab"><i class="fa fa-home"></i></a></li>
+            <li><a href="#control-sidebar-settings-tab" data-toggle="tab"><i class="fa fa-gears"></i></a></li>
+        </ul>
+        <!-- Tab panes -->
+        <div class="tab-content">
+            <!-- Home tab content -->
+            <div class="tab-pane" id="control-sidebar-home-tab">
+                <h3 class="control-sidebar-heading">Recent Activity</h3>
+                <ul class="control-sidebar-menu">
+                    <li>
+                        <a href="javascript:void(0)">
+                            <i class="menu-icon fa fa-birthday-cake bg-red"></i>
+
+                            <div class="menu-info">
+                                <h4 class="control-sidebar-subheading">Langdon's Birthday</h4>
+
+                                <p>Will be 23 on April 24th</p>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <i class="menu-icon fa fa-user bg-yellow"></i>
+
+                            <div class="menu-info">
+                                <h4 class="control-sidebar-subheading">Frodo Updated His Profile</h4>
+
+                                <p>New phone +1(800)555-1234</p>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <i class="menu-icon fa fa-envelope-o bg-light-blue"></i>
+
+                            <div class="menu-info">
+                                <h4 class="control-sidebar-subheading">Nora Joined Mailing List</h4>
+
+                                <p>nora@example.com</p>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <i class="menu-icon fa fa-file-code-o bg-green"></i>
+
+                            <div class="menu-info">
+                                <h4 class="control-sidebar-subheading">Cron Job 254 Executed</h4>
+
+                                <p>Execution time 5 seconds</p>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+                <!-- /.control-sidebar-menu -->
+
+                <h3 class="control-sidebar-heading">Tasks Progress</h3>
+                <ul class="control-sidebar-menu">
+                    <li>
+                        <a href="javascript:void(0)">
+                            <h4 class="control-sidebar-subheading">
+                                Custom Template Design
+                                <span class="label label-danger pull-right">70%</span>
+                            </h4>
+
+                            <div class="progress progress-xxs">
+                                <div class="progress-bar progress-bar-danger" style="width: 70%"></div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <h4 class="control-sidebar-subheading">
+                                Update Resume
+                                <span class="label label-success pull-right">95%</span>
+                            </h4>
+
+                            <div class="progress progress-xxs">
+                                <div class="progress-bar progress-bar-success" style="width: 95%"></div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <h4 class="control-sidebar-subheading">
+                                Laravel Integration
+                                <span class="label label-warning pull-right">50%</span>
+                            </h4>
+
+                            <div class="progress progress-xxs">
+                                <div class="progress-bar progress-bar-warning" style="width: 50%"></div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="javascript:void(0)">
+                            <h4 class="control-sidebar-subheading">
+                                Back End Framework
+                                <span class="label label-primary pull-right">68%</span>
+                            </h4>
+
+                            <div class="progress progress-xxs">
+                                <div class="progress-bar progress-bar-primary" style="width: 68%"></div>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+                <!-- /.control-sidebar-menu -->
+
+            </div>
+            <!-- /.tab-pane -->
+            <!-- Stats tab content -->
+            <div class="tab-pane" id="control-sidebar-stats-tab">Stats Tab Content</div>
+            <!-- /.tab-pane -->
+            <!-- Settings tab content -->
+            <div class="tab-pane" id="control-sidebar-settings-tab">
+                <form method="post">
+                    <h3 class="control-sidebar-heading">General Settings</h3>
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Report panel usage
+                            <input type="checkbox" class="pull-right" checked>
+                        </label>
+
+                        <p>
+                            Some information about this general settings option
+                        </p>
+                    </div>
+                    <!-- /.form-group -->
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Allow mail redirect
+                            <input type="checkbox" class="pull-right" checked>
+                        </label>
+
+                        <p>
+                            Other sets of options are available
+                        </p>
+                    </div>
+                    <!-- /.form-group -->
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Expose author name in posts
+                            <input type="checkbox" class="pull-right" checked>
+                        </label>
+
+                        <p>
+                            Allow the user to show his name in blog posts
+                        </p>
+                    </div>
+                    <!-- /.form-group -->
+
+                    <h3 class="control-sidebar-heading">Chat Settings</h3>
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Show me as online
+                            <input type="checkbox" class="pull-right" checked>
+                        </label>
+                    </div>
+                    <!-- /.form-group -->
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Turn off notifications
+                            <input type="checkbox" class="pull-right">
+                        </label>
+                    </div>
+                    <!-- /.form-group -->
+
+                    <div class="form-group">
+                        <label class="control-sidebar-subheading">
+                            Delete chat history
+                            <a href="javascript:void(0)" class="text-red pull-right"><i class="fa fa-trash-o"></i></a>
+                        </label>
+                    </div>
+                    <!-- /.form-group -->
+                </form>
+            </div>
+            <!-- /.tab-pane -->
+        </div>
+    </aside>
+    <!-- /.control-sidebar -->
+    <!-- Add the sidebar's background. This div must be placed
+         immediately after the control sidebar -->
+    <div class="control-sidebar-bg"></div>
+
+
+    <!--新增-->
+    <!-- 申请权限的模态框-->
+    <div class="modal fade" id="modal_add_node" tabindex="-1" role="dialog" aria-labelledby="modal_addnode">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="modal_addnode">添加节点</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="host" name="host" placeholder="请填写host">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="dbport" name="dbport" placeholder="请填写dbport">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="rtype" name="rtype" placeholder="请填写rtype">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="cluster_name" name="cluster_name" placeholder="请填写cluster_name">
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="apply_node">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ./wrapper -->
+
+<!-- jQuery 3 -->
+<script src="../../bower_components/jquery/dist/jquery.min.js"></script>
+<!-- Bootstrap 3.3.7 -->
+<script src="../../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<!-- Slimscroll -->
+<script src="../../bower_components/jquery-slimscroll/jquery.slimscroll.min.js"></script>
+<!-- FastClick -->
+<script src="../../bower_components/fastclick/lib/fastclick.js"></script>
+<!-- AdminLTE App -->
+<script src="../../dist/js/adminlte.min.js"></script>
+<!-- AdminLTE for demo purposes -->
+<script src="../../dist/js/demo.js"></script>
+
+
+<!--新增-->
+<script src="../../bower_components/bootstrap3-table/bootstrap-table.js"></script>
+<script src="../../bower_components/bootstrap3-table/bootstrap-table-export.min.js"></script>
+<script src="../../bower_components/bootstrap3-table/bootstrap-table-zh-CN.min.js"></script>
+<script src="../../bower_components/bootstrap3-table/tableExport.min.js"></script>
+
+<script>
+
+    function my_node() {
+        //采取异步请求
+        //初始化table
+        $('#node_tb_test2').bootstrapTable('destroy').bootstrapTable({
+            method: 'post',
+            contentType: "application/x-www-form-urlencoded",
+            url: "getallmysqlinfo", //填写路由
+            striped: true,                      //是否显示行间隔色
+            cache: false,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
+            pagination: true,                   //是否显示分页（*）
+            //sortable: true,                     //是否启用排序
+            sortable: false,                     //是否启用排序
+            sortOrder: "asc",                   //排序方式
+            sidePagination: "server",           //分页方式：client客户端分页，server服务端分页（*）
+            pageNumber: 1,                      //初始化加载第一页，默认第一页,并记录
+            pageSize: 14,                       //每页的记录行数（*）
+            pageList: [10, 30, 50, 100],        //可供选择的每页的行数（*）
+            //showExport: true,                   //是否显示导出按钮
+            showExport: false,                   //是否显示导出按钮
+            exportOptions: {
+                ignoreColumn: [0],  //忽略某些列的索引数组
+                fileName: 'test_table2'  //文件名称设置
+            },
+            //search: true,                       //是否显示表格搜索
+            search: false,                       //是否显示表格搜索
+            strictSearch: false,                //是否全匹配搜索
+            //showColumns: true,                  //是否显示所有的列（选择显示的列）
+            showColumns: false,                  //是否显示所有的列（选择显示的列）
+            showRefresh: false,                  //是否显示刷新按钮
+            minimumCountColumns: 2,             //最少允许的列数
+            clickToSelect: true,                //是否启用点击选中行
+            uniqueId: "host",                     //每一行的唯一标识，一般为主键列
+            //showToggle: true,                   //是否显示详细视图和列表视图的切换按钮
+            showToggle: false,                   //是否显示详细视图和列表视图的切换按钮
+            cardView: false,                    //是否显示详细视图
+            detailView: true,                   //是否显示父子表
+            locale: 'zh-CN',                    //本地化
+            toolbar: "#toolbar",                //指明自定义的toolbar
+            queryParamsType: 'limit',
+            //获取查询列表请求服务数据时所传参数
+            queryParams:
+                function (params) {
+                    return {
+                        limit: params.limit,
+                        offset: params.offset,
+                        search: params.search
+                    }
+                },
+
+            columns: [{
+                title: 'host',
+                field: 'host'
+            }, {
+                title: 'dbport',
+                field: 'dbport'
+            }, {
+                title: 'role',
+                field: 'role'
+            },
+            {
+                title: 'cluster_name',
+                field: 'cluster_name'
+            },
+            {
+                title: 'online',
+                field: 'online',
+                formatter: function (value, row, index) {
+                    if(value == true){
+                        return "<span class='label label-info'>online</span>"
+                    }else{
+                        return "<span class='label label-danger'>offline</span>"
+                    }
+                }
+
+            },
+            {
+                title: 'action',
+                field: 'host',
+                formatter: function (value, row, index) {
+                    return "<span class='label label-info' edit_host="+ value +">编辑</span>" +
+                            "<span class='label label-info' maintain="+ value +"> 维护</span>" +
+                            "<span class='label label-info' switching="+ value +"> 主从切换</span>"
+                }
+            }
+            ],
+            onLoadSuccess: function () {
+            },
+            onLoadError: function () {
+                console.log("数据加载失败！");
+            },
+            onSearch: function (e) {
+                //传搜索参数给服务器
+                queryParams(e)
+            },
+            responseHandler: function (res) {
+                //在ajax获取到数据，渲染表格之前，修改数据源
+                return res;
+            }
+        });
+    }
+    my_node();
+
+    //用于添加节点
+    $("#apply_node").click(function () {
+
+        var add_node_url = "import"; //用于填写路由
+
+
+        var host = $("#host").val();
+        var rtype = $("#rtype").val();
+        var dbport = $("#dbport").val();
+        var cluster_name = $("#cluster_name").val();
+        var data = {
+            "host": host,
+            "dbport": dbport,
+            "rtype": rtype,
+            "cluster_name": cluster_name,
+        };
+
+        $.ajax({
+            type: "post",
+            url: add_node_url, //填写路由地址
+            contentType: "application/x-www-form-urlencoded",
+            //dataType: "json",
+            data: data,
+            // headers: {
+            //     "X-CSRFToken": getCookie("csrftoken")
+            // },
+            success: function (data) {
+                console.log("add node ok");
+                console.log(data);
+                window.location.reload();
+            },
+            error: function (error) {
+                console.log("add node failed");
+                console.log(error)
+            }
+        });
+    })
+
+
+</script>
+</body>
+</html>
