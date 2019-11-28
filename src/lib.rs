@@ -105,6 +105,9 @@ pub fn start_web(db: DbInfo) {
             .route("/", web::get().to(webroute::index))
             .route("/pages/tables/import", web::post().to(webroute::route::import_mysql_info))
             .route("/pages/tables/getallmysqlinfo", web::post().to(webroute::route::get_all_mysql_info))
+            .route("/pages/tables/editnode", web::post().to(webroute::route::get_all_mysql_info))
+            .route("/pages/tables/deletenode", web::post().to(webroute::route::get_all_mysql_info))
+            .route("/pages/tables/setmaintain", web::post().to(webroute::route::get_all_mysql_info))
             .route("/{filename:.*}", web::get().to(webroute::index_static))
             .default_service(
                 web::route()
