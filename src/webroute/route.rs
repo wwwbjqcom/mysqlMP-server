@@ -6,7 +6,7 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use crate::storage;
 use crate::storage::rocks::DbInfo;
-use crate::ha::procotol::{MysqlState, HostInfoValue};
+use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -43,38 +43,26 @@ pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> 
     })
 }
 
-
-#[derive(Serialize, Deserialize, Debug)]
-struct AllMysqlHostInfo {
-    total: usize,
-    rows: Vec<serde_json::Value>
-}
-
 /// extract `export mysql host info` using serde
 pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let result = data.iterator(&cf_name,&String::from(""));
-    let mut rows: Vec<serde_json::Value> = vec![];
+    let mut rows = AllNodeInfo::new();
     match result {
         Ok(v) => {
-            let total = v.len();
-
             for row in v {
                 let role = get_nodes_role(&data, &row.key);
                 let value: HostInfoValue = serde_json::from_str(&row.value).unwrap();
                 let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role);
-                rows.push(serde_json::json!(v));
+                rows.cluster_op(row.key.clone(), v);
+                //rows.push(serde_json::json!(v));
             }
             HttpResponse::Ok()
-                .json(AllMysqlHostInfo{
-                    total, rows
-                })
+                .json(rows.rows)
         }
         Err(_e) => {
             HttpResponse::Ok()
-                .json(AllMysqlHostInfo{
-                    total: 0, rows: vec![]
-                })
+                .json(vec![AllNodeInfo::new()])
         }
     }
 }

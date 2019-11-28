@@ -18,6 +18,7 @@ pub enum  MyProtocol {
     ChangeMaster,
     SyncBinlog,         //mysql服务宕机，同步差异binlog到新master
     RecoveryCluster,    //宕机重启自动恢复主从同步, 如有差异将回滚本机数据，并保存回滚数据
+    GetRecoveryInfo,    //从新master获取宕机恢复同步需要的信息
     RecoveryValue,      //宕机恢复回滚的数据，回给服务端保存，有管理员人工决定是否追加
     ReplicationStatus,  //获取slave同步状态
     DownNodeCheck,      //宕机节点状态检查，用于server端检测到宕机时，分发到各client复检
@@ -53,6 +54,8 @@ impl MyProtocol {
             return MyProtocol::ReplicationStatus;
         }else if code == &0xf4 {
             return MyProtocol::DownNodeCheck;
+        }else if code == &0xf3 {
+            return MyProtocol::GetRecoveryInfo;
         }
         else {
             return MyProtocol::UnKnow;
@@ -74,11 +77,26 @@ impl MyProtocol {
             MyProtocol::RecoveryValue => 0xf6,
             MyProtocol::ReplicationStatus => 0xf5,
             MyProtocol::DownNodeCheck => 0xf4,
+            MyProtocol::GetRecoveryInfo => 0xf3,
             MyProtocol::UnKnow => 0xff
         }
     }
 
 }
+
+///
+/// 用于空包
+///
+#[derive(Serialize)]
+pub struct Null {
+    default: usize,
+}
+impl Null {
+    pub fn new() -> Null {
+        Null{ default: 0 }
+    }
+}
+
 ///
 /// 错误信息
 ///
@@ -96,6 +114,9 @@ pub struct MysqlState {
     pub sql_thread: bool,
     pub io_thread: bool,
     pub seconds_behind: usize,
+    pub master_log_file: String,
+    pub read_master_log_pos: usize,
+    pub exec_master_log_pos: usize,
     pub error: String
 }
 
@@ -139,10 +160,11 @@ impl DownNodeCheckStatus {
 ///
 /// 用于master宕机对所有slave请求replication的情况，供选举以及追加binlog的作用
 ///
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReplicationState {
     pub log_name: String,
     pub read_log_pos: usize,
+    pub exec_log_pos: usize
 }
 
 ///
@@ -165,6 +187,8 @@ pub struct SyncBinlogInfo{
 ///
 /// mysql实例宕机client发送所有差异的binlog原始数据
 ///
+/// 仅用于client之间传递
+///
 #[derive(Serialize, Deserialize)]
 pub struct BinlogValue{
     value: Vec<u8>
@@ -175,7 +199,7 @@ pub struct BinlogValue{
 #[derive(Deserialize, Serialize)]
 pub struct ChangeMasterInfo{
     pub master_host: String,
-    pub master_port: String
+    pub master_port: usize
 }
 
 ///
@@ -189,6 +213,29 @@ pub struct RecoveryInfo {
     pub masterhost: String,
     pub masterport: usize,
 }
+
+impl RecoveryInfo {
+    pub fn new(rec: GetRecoveryInfo, host: String, dbport: usize) -> RecoveryInfo {
+        RecoveryInfo{
+            binlog: rec.binlog,
+            position: rec.position,
+            gtid: rec.gtid,
+            masterhost: host,
+            masterport: dbport
+        }
+    }
+}
+
+///
+/// 从新master获取的信息
+///
+#[derive(Deserialize, Debug, Serialize)]
+pub struct GetRecoveryInfo {
+    pub binlog: String,
+    pub position: usize,
+    pub gtid: String,
+}
+
 
 ///
 ///用于宕机恢复旧master回滚，该结构体是从client发回的回滚等数据信息
@@ -228,11 +275,51 @@ pub struct HostInfoValueGetAllState {
     pub host: String,   //127.0.0.1:3306
     pub dbport: usize,  //default 3306
     pub rtype: String,  //db、route
-    pub cluster_name: String,   //集群名称,route类型默认default
     pub online: bool,   //是否在线， true、false
     pub maintain: bool, //是否处于维护模式，true、false
     pub role: String,   //主从角色
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ClusterHostInfoValue {
+    pub cluster_name: String,
+    pub node_list: Vec<HostInfoValueGetAllState>,
+}
+
+impl ClusterHostInfoValue {
+    pub fn new(cluster_name: String) -> ClusterHostInfoValue {
+        ClusterHostInfoValue{ cluster_name, node_list: vec![] }
+    }
+
+    pub fn add_node(&mut self,node_info: HostInfoValueGetAllState) {
+        self.node_list.push(node_info);
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AllNodeInfo {
+    pub rows: Vec<ClusterHostInfoValue>
+}
+
+impl AllNodeInfo {
+    pub fn new() -> AllNodeInfo {
+        AllNodeInfo{ rows: vec![] }
+    }
+
+    pub fn cluster_op(&mut self, cluster_name: String, node_info: HostInfoValueGetAllState) {
+        for node in &mut self.rows {
+            if node.cluster_name == cluster_name {
+                node.add_node(node_info);
+                return;
+            }
+        }
+        let mut cluster_info = ClusterHostInfoValue::new(cluster_name);
+        cluster_info.add_node(node_info);
+        self.rows.push(cluster_info);
+    }
+}
+
+
 
 impl HostInfoValueGetAllState {
     pub fn new(host_info: &HostInfoValue,role: String) -> HostInfoValueGetAllState {
@@ -240,7 +327,6 @@ impl HostInfoValueGetAllState {
             host: host_info.host.clone(),
             dbport: host_info.dbport.clone(),
             rtype: host_info.rtype.clone(),
-            cluster_name: host_info.cluster_name.clone(),
             online: host_info.online.clone(),
             maintain: host_info.maintain.clone(),
             role
@@ -256,12 +342,6 @@ fn header(code: u8, payload: u64) -> Vec<u8> {
     let payload = crate::readvalue::write_u64(payload);
     buf.extend(payload);
     return buf;
-}
-
-pub fn send_packet(packet: &Vec<u8>, conn: &mut TcpStream) -> Result<(), Box<dyn Error>>{
-    conn.write(packet)?;
-    conn.flush()?;
-    Ok(())
 }
 
 pub fn send_value_packet<T: Serialize>(mut tcp: &TcpStream, value: &T, type_code: MyProtocol) -> Result<(), Box<dyn Error>> {

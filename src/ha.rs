@@ -5,14 +5,14 @@
 
 use crate::storage::rocks::{DbInfo, KeyValue};
 use std::{thread, time};
-use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState};
+use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState, send_value_packet};
 use std::error::Error;
 use std::net::{TcpStream, SocketAddr, IpAddr, Ipv4Addr};
 use std::time::Duration;
 
 pub mod procotol;
 pub mod nodes_manager;
-use procotol::{send_packet, rec_packet};
+use procotol::{rec_packet};
 use actix_web::web;
 use std::sync::{mpsc};
 
@@ -182,9 +182,10 @@ fn get_nodes_info(db: &web::Data<DbInfo>) -> Result<Vec<NodesInfo>, Box<dyn Erro
 ///
 fn get_node_state_from_host(host_info: &str) -> Result<MysqlState, Box<dyn Error>> {
     let mut conn = conn(host_info)?;
-    let mut buf: Vec<u8> = vec![];
-    buf.push(0xfe);
-    send_packet(&buf, &mut conn)?;
+    //let mut buf: Vec<u8> = vec![];
+    //buf.push(0xfe);
+    send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::MysqlCheck)?;
+    //send_packet(&buf, &mut conn)?;
     let packet = rec_packet(&mut conn)?;
     let type_code = MyProtocol::new(&packet[0]);
     match type_code {
