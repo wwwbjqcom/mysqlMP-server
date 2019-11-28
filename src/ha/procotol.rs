@@ -278,6 +278,7 @@ pub struct HostInfoValueGetAllState {
     pub online: bool,   //是否在线， true、false
     pub maintain: bool, //是否处于维护模式，true、false
     pub role: String,   //主从角色
+    pub cluster_name: String,   //集群名称
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -329,6 +330,7 @@ impl HostInfoValueGetAllState {
             rtype: host_info.rtype.clone(),
             online: host_info.online.clone(),
             maintain: host_info.maintain.clone(),
+            cluster_name: host_info.cluster_name.clone(),
             role
         }
     }

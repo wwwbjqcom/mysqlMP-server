@@ -47,6 +47,7 @@ pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> 
 pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let result = data.iterator(&cf_name,&String::from(""));
+
     let mut rows = AllNodeInfo::new();
     match result {
         Ok(v) => {
@@ -54,7 +55,11 @@ pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
                 let role = get_nodes_role(&data, &row.key);
                 let value: HostInfoValue = serde_json::from_str(&row.value).unwrap();
                 let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role);
-                rows.cluster_op(row.key.clone(), v);
+                if &value.rtype == &String::from("route") {
+                    rows.cluster_op(String::from("route"), v);
+                }else {
+                    rows.cluster_op(value.cluster_name, v);
+                }
                 //rows.push(serde_json::json!(v));
             }
             HttpResponse::Ok()

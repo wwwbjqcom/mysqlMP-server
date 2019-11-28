@@ -154,9 +154,12 @@ impl ElectionMaster {
         let mut count = 0 as usize;
         for nodes in result {
             if nodes.key != self.down_node_info.host {
-                count += 1;
                 let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
                 if !state.online {
+                    continue;
+                }
+
+                if state.rtype == "route"{
                     continue;
                 }
 
@@ -164,10 +167,7 @@ impl ElectionMaster {
                     let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
                     self.slave_nodes.push(s);
                 }
-
-                if state.rtype == "route"{
-                    continue;
-                }
+                count += 1;
                 let my_rt = Arc::clone(&rt);
                 let my_down_node = self.down_node_info.clone();
                 thread::spawn(move||{

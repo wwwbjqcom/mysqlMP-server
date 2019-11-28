@@ -115,7 +115,7 @@ pub fn start_web(db: DbInfo) {
                     .to(|| HttpResponse::MethodNotAllowed()),
             )
     })
-        .bind_ssl("127.0.0.1:8080", builder)
+        .bind_ssl("0.0.0.0:8080", builder)
         .unwrap()
         .run()
         .unwrap();
