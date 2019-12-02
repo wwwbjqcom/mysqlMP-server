@@ -7,6 +7,8 @@ use serde::Deserialize;
 use std::net::TcpStream;
 use std::error::Error;
 use std::io::{Read, Write};
+use actix_web::{web, HttpResponse};
+use crate::webroute::route::{EditInfo, EditMainTain};
 
 #[derive(Debug, Serialize)]
 pub enum  MyProtocol {
@@ -102,7 +104,18 @@ impl Null {
 ///
 #[derive(Serialize, Deserialize)]
 pub struct ReponseErr{
+    pub status: u8,
     pub err: String
+}
+
+impl ReponseErr {
+    pub fn new(err: String) -> HttpResponse {
+        HttpResponse::Ok()
+            .json(ReponseErr {
+                status: 0,
+                err
+            })
+    }
 }
 ///
 /// client回复服务端状态检查的包
@@ -196,7 +209,7 @@ pub struct BinlogValue{
 ///
 /// 主从切换，指向到新master的基础信息
 ///
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ChangeMasterInfo{
     pub master_host: String,
     pub master_port: usize
@@ -266,6 +279,25 @@ pub struct HostInfoValue {
     pub insert_time: i64,
     pub update_time: i64,
     pub maintain: bool, //是否处于维护模式，true、false
+}
+
+impl HostInfoValue {
+    pub fn edit(&mut self, info: &web::Form<EditInfo>) {
+        self.host = info.host.clone();
+        self.dbport = info.dbport.clone();
+        self.cluster_name = info.cluster_name.clone();
+        self.update_time = crate::timestamp();
+        self.rtype = info.rtype.clone();
+    }
+
+    pub fn maintain(&mut self, info: &web::Form<EditMainTain>) {
+        if info.maintain {
+            self.maintain = false;
+        }else {
+            self.maintain = true;
+        }
+        self.update_time = crate::timestamp();
+    }
 }
 
 ///

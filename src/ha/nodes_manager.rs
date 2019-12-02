@@ -76,15 +76,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             let down_node = procotol::DownNodeCheck::new(r.host, r.dbport);
             let mut elc = ElectionMaster::new(r.cluster_name.clone(), down_node);
             let _state = elc.election(&db);
-//            let state = check_network_for_downnode(&db,&down_node, &r.cluster_name).unwrap();
-//            if let Err(e) = state.update_db(&db, &down_node.host){
-//                info!("{:?}",e.to_string());
-//            };
-//            if state.db_down {
-//                //
-//            }
-//            info!("mysql server is downd:{}, client is downd:{}", state.db_down, state.client_down);
-//            info!("Ok");
         }else {
             info!("node: {} recovery success, delete status now...", r.host);
             let state = CheckState::new(0);
@@ -208,6 +199,7 @@ impl ElectionMaster {
             //if self.check_state.client_down {
                 //直接切换
                 let change_master_info = self.elc_new_master();
+                info!("election master info : {:?}",change_master_info);
                 for slave in &self.slave_nodes{
                     if slave.new_master {
                         self.ha_log.new_master_binlog_info = slave.clone();

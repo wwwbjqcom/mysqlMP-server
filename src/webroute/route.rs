@@ -5,8 +5,9 @@
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use crate::storage;
-use crate::storage::rocks::DbInfo;
-use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
+use crate::storage::rocks::{DbInfo, KeyValue};
+use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, ReponseErr};
+use std::error::Error;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +22,16 @@ pub struct HostInfo {
 pub struct State {
     pub state: u8,
     pub value: String
+}
+
+impl State {
+    pub fn new() -> HttpResponse {
+        HttpResponse::Ok()
+            .json(State {
+                state: 1,
+                value: "OK".parse().unwrap()
+            })
+    }
 }
 
 
@@ -47,7 +58,6 @@ pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> 
 pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let result = data.iterator(&cf_name,&String::from(""));
-
     let mut rows = AllNodeInfo::new();
     match result {
         Ok(v) => {
@@ -89,7 +99,101 @@ fn get_nodes_role(data: &web::Data<DbInfo>, key: &String) -> String {
     return String::from("");
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct EditInfo {
+    pub cluster_name: String,
+    pub host: String,
+    pub dbport: usize,
+    pub rtype: String,
+    pub role: String,
+    pub online: bool,
+}
 
+pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Form<EditInfo>) -> HttpResponse {
+    let cf_name = String::from("Ha_nodes_info");
+    let key = &info.host;
+    let cur_value = data.get(key, &cf_name);
+    match cur_value {
+        Ok(v) => {
+            let mut db_value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
+            db_value.edit(&info);
+            let value = serde_json::to_string(&db_value).unwrap();
+            let row = KeyValue::new(&key, &value);
+            let a = data.put(&row, &cf_name);
+            return response(a);
+        }
+        Err(e) => {
+            return ReponseErr::new(e.to_string());
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EditMainTain{
+    pub host: String,
+    pub maintain: bool
+}
+
+pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> HttpResponse {
+    let cf_name = String::from("Ha_nodes_info");
+    let key = &info.host;
+    let cur_value = data.get(key, &cf_name);
+    match cur_value {
+        Ok(v) => {
+            let mut db_value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
+            db_value.maintain(&info);
+            let value = serde_json::to_string(&db_value).unwrap();
+            let row = KeyValue::new(&key, &value);
+            let a = data.put(&row, &cf_name);
+            return response(a);
+        }
+        Err(e) => {
+            return ReponseErr::new(e.to_string());
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DeleteNode {
+    pub host: String,
+}
+
+impl DeleteNode {
+    pub fn exec(&self, data: &web::Data<DbInfo>) -> HttpResponse {
+        let cf_name = String::from("Ha_nodes_info");
+        let cur_value = data.get(&self.host, &cf_name);
+        match cur_value {
+            Ok(v) => {
+                let value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
+                if value.maintain {
+                    return response(data.delete(&self.host, &cf_name));
+                }else {
+                    let err = String::from("the maintenance mode node is only deleted");
+                    return ReponseErr::new(err);
+                }
+            }
+            Err(e) => {
+                return ReponseErr::new(e.to_string());
+            }
+        }
+    }
+}
+
+pub fn delete_node(data: web::Data<DbInfo>, info: web::Form<DeleteNode>) -> HttpResponse {
+    return info.exec(&data);
+}
+
+
+fn response(a: Result<(), Box<dyn Error>>) -> HttpResponse {
+    match a {
+        Ok(()) => {
+            return State::new();
+        },
+        Err(e) => {
+            return ReponseErr::new(e.to_string());
+        }
+    }
+}
 
 
 
