@@ -16,7 +16,7 @@ use serde::Serialize;
 ///
 ///
 
-pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo>) -> Result<(), String> {
+pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo>) -> Result<(), Box<dyn Error>> {
     let cf_name = String::from("Ha_nodes_info");
     let key = &info.host;
 
@@ -24,7 +24,8 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
     match check_unique {
         Ok(v) => {
             if v.value.len() > 0 {
-                return Err(format!("this key: ({}) already exists in the database",key).parse().unwrap());
+                let a = format!("this key: ({}) already exists in the database",key);
+                return Box::new(Err(a)).unwrap();
             }
         }
         _ => {}
@@ -34,7 +35,7 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
     let v = crate::ha::procotol::HostInfoValue{
         host: info.host.clone(),
         rtype: info.rtype.clone(),
-        dbport: info.dbport.parse::<usize>().unwrap(),
+        dbport: info.dbport.parse::<usize>()?,
         cluster_name: info.cluster_name.clone(),
         online: false,
         insert_time: crate::timestamp(),
@@ -42,13 +43,13 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
         maintain: false
     };
 
-    let value = serde_json::to_string(&v).unwrap();
-    let row = KeyValue{key: key.parse().unwrap(), value};
+    let value = serde_json::to_string(&v)?;
+    let row = KeyValue{key: key.parse()?, value};
     let a = data.put(&row, &cf_name);
     match a {
         Ok(()) => Ok(()),
         Err(e) => {
-            Err(e.to_string())
+            return Box::new(Err(e.to_string())).unwrap();
         }
     }
 

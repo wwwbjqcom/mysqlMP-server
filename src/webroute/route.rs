@@ -21,7 +21,7 @@ pub struct HostInfo {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
-    pub state: u8,
+    pub status: u8,
     pub value: String
 }
 
@@ -29,7 +29,7 @@ impl State {
     pub fn new() -> HttpResponse {
         HttpResponse::Ok()
             .json(State {
-                state: 1,
+                status: 1,
                 value: "OK".parse().unwrap()
             })
     }
@@ -39,20 +39,19 @@ impl State {
 /// extract `import host info` using serde
 pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> HttpResponse {
     let state = storage::opdb::insert_mysql_host_info(data, &info);
-    HttpResponse::from(match state {
-        Ok(()) => {
-            HttpResponse::Ok()
-                .json(State{
-                    state: 1, value: "OK".parse().unwrap()
-                })
-        }
-        Err(e) => {
-            HttpResponse::Ok()
-                .json(State{
-                    state: 0, value: e
-                })
-        }
-    })
+    return response(state);
+//    HttpResponse::from(match state {
+//        Ok(()) => {
+//            HttpResponse::Ok()
+//                .json(State{
+//                    status: 1, value: "OK".parse().unwrap()
+//                })
+//        }
+//        Err(e) => {
+//            HttpResponse::Ok()
+//                .json(ReponseErr::new(e))
+//        }
+//    })
 }
 
 /// extract `export mysql host info` using serde

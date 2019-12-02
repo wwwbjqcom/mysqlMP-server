@@ -447,9 +447,8 @@ impl SwitchForNodes {
     fn run_switch(&mut self) -> Result<(), Box<dyn Error>> {
         let mut err_host = vec![];
         for slave in &self.slave_nodes_info {
-            let mut conn = conn(&slave.host)?;
-            send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
-            if let Err(_e) = self.rec_info(&mut conn){
+            if let Err(e) = self.run_change_to_node(slave){
+                info!("host: {}, change error: {}",&slave.host, e.to_string());
                 err_host.push(slave.host.clone());
             };
         }
@@ -458,10 +457,23 @@ impl SwitchForNodes {
             return Box::new(Err(err)).unwrap();
         }
 
+        //切换旧master为slave
+        if let Err(e) = self.run_change_to_node(&self.old_master_info){
+            let err = format!("switch failed host list : {:?}", err_host);
+            return Box::new(Err(err)).unwrap();
+        }
+
         let mut conn = conn(&self.host)?;
         send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetMaster)?;
         self.rec_info(&mut conn)?;
         return Ok(());
+    }
+
+    fn run_change_to_node(&self, node: &HostInfoValueGetAllState) -> Result<(), Box<dyn Error>> {
+        let mut conn = conn(&node.host)?;
+        send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
+        self.rec_info(&mut conn)?;
+        Ok(())
     }
 
     ///
