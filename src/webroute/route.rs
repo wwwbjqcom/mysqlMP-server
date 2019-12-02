@@ -8,6 +8,7 @@ use crate::storage;
 use crate::storage::rocks::{DbInfo, KeyValue};
 use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, ReponseErr};
 use std::error::Error;
+use crate::ha::nodes_manager::SwitchForNodes;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -82,7 +83,7 @@ pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
     }
 }
 
-fn get_nodes_role(data: &web::Data<DbInfo>, key: &String) -> String {
+pub fn get_nodes_role(data: &web::Data<DbInfo>, key: &String) -> String {
     let cf_name = String::from("Nodes_state");
     let v = data.get(key, &cf_name);
     match v {
@@ -181,6 +182,18 @@ impl DeleteNode {
 
 pub fn delete_node(data: web::Data<DbInfo>, info: web::Form<DeleteNode>) -> HttpResponse {
     return info.exec(&data);
+}
+
+///
+/// 主动切换
+///
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SwitchInfo {
+    pub host: String,
+}
+pub fn switch(data: web::Data<DbInfo>, info: web::Form<SwitchInfo>) -> HttpResponse {
+    let mut switch_info = SwitchForNodes::new(&info.host);
+    return response(switch_info.switch(&data));
 }
 
 

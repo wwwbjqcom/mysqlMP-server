@@ -6,14 +6,15 @@
 use actix_web::web;
 use std::sync::{mpsc, Arc, Mutex};
 use crate::storage::rocks::{DbInfo, KeyValue};
-use crate::ha::{DownNodeInfo, conn};
+use crate::ha::{DownNodeInfo, conn, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, GetRecoveryInfo, send_value_packet};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 use crate::storage::opdb::HaChangeLog;
+use std::net::TcpStream;
 
 ///
 ///用于检查状态
@@ -110,30 +111,7 @@ impl ElectionMaster {
                 client_down: false
             },
             slave_nodes: vec![],
-            ha_log: HaChangeLog{
-                key: down_node_info.host.clone(),
-                cluster_name: cluster_name.clone(),
-                old_master_info: down_node_info.clone(),
-                new_master_binlog_info: SlaveInfo {
-                    host: "".to_string(),
-                    dbport: 0,
-                    slave_info: ReplicationState {
-                        log_name: "".to_string(),
-                        read_log_pos: 0,
-                        exec_log_pos: 0
-                    },
-                    new_master: false
-                },
-                recovery_info: RecoveryInfo {
-                    binlog: "".to_string(),
-                    position: 0,
-                    gtid: "".to_string(),
-                    masterhost: "".to_string(),
-                    masterport: 0
-                },
-                recovery_status: false,
-                switch_status: false
-            }
+            ha_log: HaChangeLog::new()
         }
     }
 
@@ -250,26 +228,27 @@ impl ElectionMaster {
     fn get_recovery_info(&mut self) -> Result<(), Box<dyn Error>> {
         for node in &self.slave_nodes {
             if node.new_master {
-                let mut conn = crate::ha::conn(&node.host)?;
-                let host_info = node.host.split(":");
-                let host_vec = host_info.collect::<Vec<&str>>();
-                //let mut buf: Vec<u8> = vec![];
-                //buf.push(0xf3);
-                //send_packet(&buf, &mut conn)?;
-                send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::GetRecoveryInfo)?;
-                let packet = rec_packet(&mut conn)?;
-                let type_code = MyProtocol::new(&packet[0]);
-                match type_code {
-                    MyProtocol::GetRecoveryInfo => {
-                        let value: GetRecoveryInfo = serde_json::from_slice(&packet[9..])?;
-                        self.ha_log.recovery_info = RecoveryInfo::new(value, host_vec[0].to_string(), node.dbport.clone());
-                        return Ok(());
-                    }
-                    _ => {
-                        let a = format!("return invalid type code: {}",&packet[0]);
-                        return  Box::new(Err(a)).unwrap();
-                    }
-                }
+                self.ha_log.recovery_info = RecoveryInfo::new(node.host.clone(), node.dbport.clone())?;
+//                let mut conn = crate::ha::conn(&node.host)?;
+//                let host_info = node.host.split(":");
+//                let host_vec = host_info.collect::<Vec<&str>>();
+//                //let mut buf: Vec<u8> = vec![];
+//                //buf.push(0xf3);
+//                //send_packet(&buf, &mut conn)?;
+//                send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::GetRecoveryInfo)?;
+//                let packet = rec_packet(&mut conn)?;
+//                let type_code = MyProtocol::new(&packet[0]);
+//                match type_code {
+//                    MyProtocol::GetRecoveryInfo => {
+//                        let value: GetRecoveryInfo = serde_json::from_slice(&packet[9..])?;
+//                        self.ha_log.recovery_info = RecoveryInfo::new(value, host_vec[0].to_string(), node.dbport.clone());
+//                        return Ok(());
+//                    }
+//                    _ => {
+//                        let a = format!("return invalid type code: {}",&packet[0]);
+//                        return  Box::new(Err(a)).unwrap();
+//                    }
+//                }
             }
         }
         Ok(())
@@ -358,5 +337,156 @@ impl SlaveInfo {
         })
     }
 }
+
+///
+/// 主动切换
+pub struct SwitchForNodes {
+    pub host: String,
+    pub dbport: usize,
+    pub cluster_name: String,
+    pub old_master_info: HostInfoValueGetAllState,
+    pub slave_nodes_info: Vec<HostInfoValueGetAllState>,
+    pub repl_info: RecoveryInfo,
+}
+
+impl SwitchForNodes {
+    pub fn new(host: &String) -> SwitchForNodes {
+        SwitchForNodes{
+            host: host.clone(),
+            dbport: 0,
+            cluster_name: "".to_string(),
+            old_master_info: HostInfoValueGetAllState {
+                host: "".to_string(),
+                dbport: 0,
+                rtype: "".to_string(),
+                online: false,
+                maintain: false,
+                role: "".to_string(),
+                cluster_name: "".to_string()
+            },
+
+            slave_nodes_info: vec![],
+            repl_info: RecoveryInfo {
+                binlog: "".to_string(),
+                position: 0,
+                gtid: "".to_string(),
+                masterhost: "".to_string(),
+                masterport: 0
+            }
+        }
+    }
+
+    pub fn switch(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        let cf_name = String::from("Ha_nodes_info");
+        let node_info = db.get(&self.host, &cf_name)?;
+        let node_info: HostInfoValue = serde_json::from_str(&node_info.value)?;
+        self.cluster_name = node_info.cluster_name;
+        self.dbport = node_info.dbport;
+        self.get_all_nodes_for_cluster_name(&db, &cf_name)?;
+        self.set_master_variables()?;
+        self.get_repl_info()?;
+        self.run_switch()?;
+        Ok(())
+    }
+
+    fn get_all_nodes_for_cluster_name(&mut self, db: &web::Data<DbInfo>, cf_name: &String) -> Result<(), Box<dyn Error>> {
+        let result = db.iterator(cf_name,&String::from(""))?;
+        for row in result {
+            let value: HostInfoValue = serde_json::from_str(&row.value)?;
+            if value.maintain{continue;};
+            if value.host == self.host {
+                let role = crate::webroute::route::get_nodes_role(db, &row.key);
+                if role == String::from("master"){
+                    return Box::new(Err(String::from("do not allow the current master to perform this operation"))).unwrap();
+                }
+                continue;
+            }
+            if value.cluster_name == self.cluster_name {
+                let role = crate::webroute::route::get_nodes_role(db, &row.key);
+                let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role.clone());
+                if role == String::from("master"){
+                    self.old_master_info = v;
+                }else {
+                    self.slave_nodes_info.push(v);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    ///
+    /// 对当前master进行read only设置，关闭写入直到slave延迟为0
+    ///
+    fn set_master_variables(&self) -> Result<(), Box<dyn Error>> {
+        let mut conn = conn(&self.old_master_info.host)?;
+        procotol::send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetVariables)?;
+        if let Err(e) = self.rec_info(&mut conn){
+            let a = format!("set old master {} variables error: {}",&self.old_master_info.host,e);
+            return Box::new(Err(a)).unwrap();
+        };
+        Ok(())
+    }
+
+    ///
+    /// 从新master获取gtid等信息，用于其他slave指向操作
+    ///
+    /// 因为有可能提升为master的节点上gtid信息和其他的不一致
+    ///
+    /// 需等待seconds_behind为0时才进行切换
+    ///
+    fn get_repl_info(&mut self) -> Result<(), Box<dyn Error>> {
+        loop {
+            let state = get_node_state_from_host(&self.host)?;
+            if state.seconds_behind > 0 { continue; };
+            self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
+            break;
+        }
+        Ok(())
+    }
+
+    fn run_switch(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut err_host = vec![];
+        for slave in &self.slave_nodes_info {
+            let mut conn = conn(&slave.host)?;
+            send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
+            if let Err(_e) = self.rec_info(&mut conn){
+                err_host.push(slave.host.clone());
+            };
+        }
+        if err_host.len() > 0 {
+            let err = format!("switch failed host list : {:?}", err_host);
+            return Box::new(Err(err)).unwrap();
+        }
+
+        let mut conn = conn(&self.host)?;
+        send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetMaster)?;
+        self.rec_info(&mut conn)?;
+        return Ok(());
+    }
+
+    ///
+    /// 切换失败恢复master状态
+    ///
+    fn recovery_variables(&self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn rec_info(&self, conn: &mut TcpStream) -> Result<(), Box<dyn Error>> {
+        let packet = rec_packet(conn)?;
+        let type_code = MyProtocol::new(&packet[0]);
+        match type_code {
+            MyProtocol::Error => {
+                let err: procotol::ReponseErr = serde_json::from_slice(&packet[9..])?;
+                return  Box::new(Err(err.err)).unwrap();
+            }
+            _ =>{}
+        }
+        Ok(())
+    }
+
+}
+
+
+
 
 

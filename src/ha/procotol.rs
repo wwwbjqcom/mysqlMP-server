@@ -9,6 +9,7 @@ use std::error::Error;
 use std::io::{Read, Write};
 use actix_web::{web, HttpResponse};
 use crate::webroute::route::{EditInfo, EditMainTain};
+use crate::ha::procotol;
 
 #[derive(Debug, Serialize)]
 pub enum  MyProtocol {
@@ -19,11 +20,13 @@ pub enum  MyProtocol {
     SetMaster,          //设置本机为新master
     ChangeMaster,
     SyncBinlog,         //mysql服务宕机，同步差异binlog到新master
-    RecoveryCluster,    //宕机重启自动恢复主从同步, 如有差异将回滚本机数据，并保存回滚数据
+    RecoveryCluster,    //宕机重启(主动切换)自动恢复主从同步, 如有差异将回滚本机数据，并保存回滚数据
     GetRecoveryInfo,    //从新master获取宕机恢复同步需要的信息
     RecoveryValue,      //宕机恢复回滚的数据，回给服务端保存，有管理员人工决定是否追加
     ReplicationStatus,  //获取slave同步状态
     DownNodeCheck,      //宕机节点状态检查，用于server端检测到宕机时，分发到各client复检
+    SetVariables,
+    RecoveryVariables,
     Ok,
     Error,
     UnKnow
@@ -58,6 +61,10 @@ impl MyProtocol {
             return MyProtocol::DownNodeCheck;
         }else if code == &0xf3 {
             return MyProtocol::GetRecoveryInfo;
+        }else if code == &0x04 {
+            return MyProtocol::SetVariables;
+        }else if code == &0x03 {
+            return MyProtocol::RecoveryVariables;
         }
         else {
             return MyProtocol::UnKnow;
@@ -80,6 +87,8 @@ impl MyProtocol {
             MyProtocol::ReplicationStatus => 0xf5,
             MyProtocol::DownNodeCheck => 0xf4,
             MyProtocol::GetRecoveryInfo => 0xf3,
+            MyProtocol::SetVariables => 0x04,
+            MyProtocol::RecoveryVariables => 0x03,
             MyProtocol::UnKnow => 0xff
         }
     }
@@ -228,13 +237,28 @@ pub struct RecoveryInfo {
 }
 
 impl RecoveryInfo {
-    pub fn new(rec: GetRecoveryInfo, host: String, dbport: usize) -> RecoveryInfo {
-        RecoveryInfo{
-            binlog: rec.binlog,
-            position: rec.position,
-            gtid: rec.gtid,
-            masterhost: host,
-            masterport: dbport
+    pub fn new(host: String, dbport: usize) -> Result<RecoveryInfo, Box<dyn Error>> {
+        let mut conn = crate::ha::conn(&host)?;
+        let host_info = host.split(":");
+        let host_vec = host_info.collect::<Vec<&str>>();
+        send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::GetRecoveryInfo)?;
+        let packet = rec_packet(&mut conn)?;
+        let type_code = MyProtocol::new(&packet[0]);
+        match type_code {
+            MyProtocol::GetRecoveryInfo => {
+                let info: GetRecoveryInfo = serde_json::from_slice(&packet[9..])?;
+                return Ok(RecoveryInfo{
+                    binlog: info.binlog,
+                    position: info.position,
+                    gtid: info.gtid,
+                    masterhost: host_vec[0].to_string(),
+                    masterport: dbport
+                });
+            }
+            _ => {
+                let a = format!("return invalid type code: {}",&packet[0]);
+                return  Box::new(Err(a)).unwrap();
+            }
         }
     }
 }

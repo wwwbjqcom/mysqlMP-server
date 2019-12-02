@@ -5,7 +5,7 @@
 use actix_web::{web};
 use crate::webroute::route::HostInfo;
 use crate::storage::rocks::{DbInfo, KeyValue};
-use crate::ha::procotol::{DownNodeCheck, RecoveryInfo};
+use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
 use crate::ha::nodes_manager::SlaveInfo;
 use serde::Serialize;
@@ -66,6 +66,33 @@ pub struct HaChangeLog {
 }
 
 impl HaChangeLog {
+    pub fn new() -> HaChangeLog {
+        HaChangeLog{
+            key: "".to_string(),
+            cluster_name: "".to_string(),
+            old_master_info: DownNodeCheck { host: "".to_string(), dbport: 0 },
+            new_master_binlog_info: SlaveInfo {
+                host: "".to_string(),
+                dbport: 0,
+                slave_info: ReplicationState {
+                    log_name: "".to_string(),
+                    read_log_pos: 0,
+                    exec_log_pos: 0
+                },
+                new_master: false
+            },
+            recovery_info: RecoveryInfo {
+                binlog: "".to_string(),
+                position: 0,
+                gtid: "".to_string(),
+                masterhost: "".to_string(),
+                masterport: 0
+            },
+            recovery_status: false,
+            switch_status: false
+        }
+    }
+
     pub fn save(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let key = format!("{}_{}",self.key.clone(), crate::timestamp());
         let cf_name = String::from("Ha_change_log");
