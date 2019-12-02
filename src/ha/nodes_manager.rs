@@ -459,7 +459,7 @@ impl SwitchForNodes {
 
         //切换旧master为slave
         if let Err(e) = self.run_change_to_node(&self.old_master_info){
-            let err = format!("switch failed host list : {:?}", err_host);
+            let err = format!("switch failed host list : {:?} {:?}", err_host, e.to_string());
             return Box::new(Err(err)).unwrap();
         }
 

@@ -100,33 +100,33 @@ impl AllNodes {
 
     fn check_node_state(&mut self, db: &web::Data<DbInfo>, sender: &mpsc::Sender<DownNodeInfo>) {
         for nodes in &mut self.info {
-            if !nodes.value.maintain {
-                let state = get_node_state_from_host(&nodes.key);
-                match state {
-                    Ok(v) => {
-                        let state;
-                        if !v.online {
-                            state = nodes.set_offline(&db, sender);
-                        }else {
-                            state = nodes.set_online(&db, sender);
-                        }
-                        if let Err(e) = state {
-                            info!("update host info failed!!!!");
-                            info!("{:?}",e.to_string()) ;
-                            continue;
-                        }
-                        if let Err(e) = nodes.update_nodes_state(&db, &v){
-                            info!("{:?}",e.to_string());
-                        };
-                    },
-                    Err(_e) => {
-                        //info!("{} state check failed ({})....",&nodes.key, e.to_string());
-                        if let Err(e) = nodes.set_offline(&db, sender){
-                            info!("{:?}",e.to_string());
-                        };
+            //if !nodes.value.maintain {
+            let state = get_node_state_from_host(&nodes.key);
+            match state {
+                Ok(v) => {
+                    let state;
+                    if !v.online {
+                        state = nodes.set_offline(&db, sender);
+                    }else {
+                        state = nodes.set_online(&db, sender);
                     }
+                    if let Err(e) = state {
+                        info!("update host info failed!!!!");
+                        info!("{:?}",e.to_string()) ;
+                        continue;
+                    }
+                    if let Err(e) = nodes.update_nodes_state(&db, &v){
+                        info!("{:?}",e.to_string());
+                    };
+                },
+                Err(_e) => {
+                    //info!("{} state check failed ({})....",&nodes.key, e.to_string());
+                    if let Err(e) = nodes.set_offline(&db, sender){
+                        info!("{:?}",e.to_string());
+                    };
                 }
             }
+            //}
         }
     }
 }
