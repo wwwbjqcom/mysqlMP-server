@@ -207,5 +207,49 @@ fn response(a: Result<(), Box<dyn Error>>) -> HttpResponse {
     }
 }
 
+fn response_value<F: Serialize>(value: &F) -> HttpResponse {
+    HttpResponse::Ok()
+        .json(value)
+}
+
+///
+///
+#[derive(Deserialize, Serialize)]
+pub struct SwitchLog{
+    status: usize,
+    log_data: Vec<String>
+}
+
+impl SwitchLog {
+    fn new() -> SwitchLog {
+        SwitchLog{ status: 1, log_data: vec![] }
+    }
+
+    fn get_all(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let cf_name = String::from("Ha_change_log");
+        let result = db.iterator(&cf_name, &String::from(""));
+        match result {
+            Ok(v) => {
+                for row in v{
+                    self.log_data.push(row.value);
+                }
+                return Ok(());
+            }
+            Err(e) => {
+                return Box::new(Err(e.to_string())).unwrap();
+            }
+        }
+    }
+}
+
+pub fn switchlog(data: web::Data<DbInfo>) -> HttpResponse {
+
+    let mut switch_log = SwitchLog::new();
+    if let Err(e) = switch_log.get_all(&data) {
+        return ReponseErr::new(e.to_string());
+    }
+    return response_value(&switch_log);
+}
+
 
 

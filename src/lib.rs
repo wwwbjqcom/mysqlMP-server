@@ -109,6 +109,7 @@ pub fn start_web(db: DbInfo) {
             .route("/pages/tables/deletenode", web::post().to(webroute::route::delete_node))
             .route("/pages/tables/setmaintain", web::post().to(webroute::route::edit_maintain))
             .route("/pages/tables/switch", web::post().to(webroute::route::switch))
+            .route("/pages/tables/getlogdata", web::post().to(webroute::route::switchlog))
             .route("/{filename:.*}", web::get().to(webroute::index_static))
             .default_service(
                 web::route()
