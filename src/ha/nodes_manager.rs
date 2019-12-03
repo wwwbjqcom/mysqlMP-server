@@ -279,6 +279,8 @@ impl ElectionMaster {
         let packet = rec_packet(&mut conn)?;
         let type_code = MyProtocol::new(&packet[0]);
         info!("{:?}",type_code);
+
+        info!("{:?}",type_code);
         match type_code {
             MyProtocol::Ok => {
                 info!("{} change Ok", host);
