@@ -244,6 +244,7 @@ impl ElectionMaster {
             if node.new_master {
                 info!("get from host : {}", &node.host);
                 self.ha_log.recovery_info = RecoveryInfo::new(node.host.clone(), node.dbport.clone())?;
+                info!("Ok");
 //                let mut conn = crate::ha::conn(&node.host)?;
 //                let host_info = node.host.split(":");
 //                let host_vec = host_info.collect::<Vec<&str>>();
@@ -278,7 +279,9 @@ impl ElectionMaster {
         //buf.push(type_code.get_code());
         //send_packet(&buf, &mut conn)?;
         send_value_packet(&mut conn, value, type_code)?;
+        info!("aa");
         let packet = rec_packet(&mut conn)?;
+        info!("bb");
         let type_code = MyProtocol::new(&packet[0]);
         match type_code {
             MyProtocol::Ok => {

@@ -254,7 +254,6 @@ impl RecoveryInfo {
                     masterhost: host_vec[0].to_string(),
                     masterport: dbport
                 });
-                info!("Ok");
             }
             _ => {
                 let a = format!("return invalid type code: {}",&packet[0]);
