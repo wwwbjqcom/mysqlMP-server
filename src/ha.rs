@@ -39,7 +39,7 @@ impl NodesInfo {
         if self.value.online{
             self.value.online = false;
             self.update_value(db)?;
-            self.send_down_info(sender);
+            self.send_down_info(sender, false);
         }
         Ok(())
     }
@@ -48,14 +48,14 @@ impl NodesInfo {
         if !self.value.online {
             self.value.online = true;
             self.update_value(db)?;
-            self.send_down_info(sender);
+            self.send_down_info(sender, true);
         }
         Ok(())
     }
 
-    fn send_down_info(&self, sender: &mpsc::Sender<DownNodeInfo>) {
+    fn send_down_info(&self, sender: &mpsc::Sender<DownNodeInfo> , state: bool) {
         if !self.value.maintain {
-            let down = DownNodeInfo{host: self.key.clone(), dbport:self.value.dbport.clone(), online: true, cluster_name: self.value.cluster_name.clone()};
+            let down = DownNodeInfo{host: self.key.clone(), dbport:self.value.dbport.clone(), online: state, cluster_name: self.value.cluster_name.clone()};
             if let Err(e) = sender.send(down){
                 info!("{} state send faild: {:?}",self.key,e.to_string());
             }

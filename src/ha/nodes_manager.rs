@@ -180,16 +180,20 @@ impl ElectionMaster {
                 info!("election master info : {:?}",change_master_info);
                 for slave in &self.slave_nodes{
                     if slave.new_master {
+                        info!("send to new master:{}....",&slave.host);
                         self.ha_log.new_master_binlog_info = slave.clone();
                         if let Err(e) = self.exec_change(&slave.host, MyProtocol::SetMaster, &procotol::Null::new()){
                             self.ha_log.save(db)?;
                             return Err(e);
                         };
+                        info!("OK");
                     }else {
+                        info!("send change master info to slave node: {}....", &slave.host);
                         if let Err(e) = self.exec_change(&slave.host, MyProtocol::ChangeMaster, &change_master_info){
                             self.ha_log.save(db)?;
                             return Err(e);
                         };
+                        info!("OK");
                     }
                 }
             //}else {
@@ -205,6 +209,7 @@ impl ElectionMaster {
     /// 通过read_binlog信息选举新master
     /// 
     fn elc_new_master(&mut self) -> ChangeMasterInfo{
+        info!("election new master node.....");
         let mut index: usize = 0;
         let mut read_binlog_pos: usize = 0;
         for (idx,slave_node) in self.slave_nodes.iter().enumerate() {
@@ -214,6 +219,7 @@ impl ElectionMaster {
             }
         }
         self.slave_nodes[index].new_master = true;
+        info!("new master host: {}", &self.slave_nodes[index].host);
         let dbport = self.slave_nodes[index].dbport.clone();
         let host_info = self.slave_nodes[index].host.clone();
         let host_info = host_info.split(":");
