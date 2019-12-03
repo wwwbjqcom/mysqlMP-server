@@ -76,7 +76,9 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             //let nodes = crate::ha::get_nodes_info(&db);
             let down_node = procotol::DownNodeCheck::new(r.host, r.dbport);
             let mut elc = ElectionMaster::new(r.cluster_name.clone(), down_node);
-            let _state = elc.election(&db);
+            if let Err(e) = elc.election(&db){
+                info!("{}", e.to_string());
+            };
         }else {
             info!("node: {} recovery success, delete status now...", r.host);
             let state = CheckState::new(0);
@@ -178,6 +180,7 @@ impl ElectionMaster {
                 //直接切换
                 let change_master_info = self.elc_new_master();
                 info!("election master info : {:?}",change_master_info);
+                info!("{:?}", self.slave_nodes);
                 for slave in &self.slave_nodes{
                     if slave.new_master {
                         info!("send to new master:{}....",&slave.host);
@@ -273,6 +276,7 @@ impl ElectionMaster {
         let type_code = MyProtocol::new(&packet[0]);
         match type_code {
             MyProtocol::Ok => {
+                info!("{} change Ok", host);
                 return Ok(());
             }
             MyProtocol::Error => {
@@ -319,7 +323,7 @@ fn get_down_state_from_node(host_info: &String,
 /// 根据读取binlog位置情况选举新master
 /// 并对其余节点执行changemaster
 ///
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub struct SlaveInfo {
     pub host: String,
     pub dbport: usize,
