@@ -9,6 +9,7 @@ use crate::storage::rocks::{DbInfo, KeyValue};
 use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, ReponseErr};
 use std::error::Error;
 use crate::ha::nodes_manager::SwitchForNodes;
+use crate::storage::opdb::HaChangeLog;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -217,7 +218,7 @@ fn response_value<F: Serialize>(value: &F) -> HttpResponse {
 #[derive(Deserialize, Serialize)]
 pub struct SwitchLog{
     status: usize,
-    log_data: Vec<String>
+    log_data: Vec<HaChangeLog>
 }
 
 impl SwitchLog {
@@ -231,7 +232,8 @@ impl SwitchLog {
         match result {
             Ok(v) => {
                 for row in v{
-                    self.log_data.push(row.value);
+                    let value: HaChangeLog = serde_json::from_str(&row.value)?;
+                    self.log_data.push(value);
                 }
                 return Ok(());
             }

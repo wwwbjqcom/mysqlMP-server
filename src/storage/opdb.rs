@@ -8,7 +8,7 @@ use crate::storage::rocks::{DbInfo, KeyValue};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
 use crate::ha::nodes_manager::SlaveInfo;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 
 ///
@@ -55,7 +55,7 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
 
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct HaChangeLog {
     pub key: String,                        //格式 host_timestamp  host为宕机节点
     pub cluster_name: String,

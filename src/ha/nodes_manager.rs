@@ -323,7 +323,7 @@ fn get_down_state_from_node(host_info: &String,
 /// 根据读取binlog位置情况选举新master
 /// 并对其余节点执行changemaster
 ///
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, Deserialize)]
 pub struct SlaveInfo {
     pub host: String,
     pub dbport: usize,
