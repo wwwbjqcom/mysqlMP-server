@@ -418,7 +418,6 @@ pub fn rec_packet(conn: &mut TcpStream) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut buf: Vec<u8> = vec![];
     let mut header: Vec<u8> = vec![0u8;9];
     conn.read_exact(&mut header)?;
-    info!("{}", &header[0]);
     let payload = crate::readvalue::read_u64(&header[1..]);
     let mut payload_buf: Vec<u8> = vec![0u8; payload as usize];
     conn.read_exact(&mut payload_buf)?;
