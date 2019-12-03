@@ -102,7 +102,7 @@ pub struct ElectionMaster {
 
 impl ElectionMaster {
     fn new(cluster_name: String, down_node_info: DownNodeCheck) -> ElectionMaster {
-        ElectionMaster{
+        let mut el = ElectionMaster{
             cluster_name: cluster_name.clone(),
             down_node_info: down_node_info.clone(),
             check_state: CheckState {
@@ -114,7 +114,11 @@ impl ElectionMaster {
             },
             slave_nodes: vec![],
             ha_log: HaChangeLog::new()
-        }
+        };
+        el.ha_log.old_master_info = down_node_info.clone();
+        el.ha_log.key = down_node_info.host.clone();
+        el.ha_log.cluster_name = cluster_name.clone();
+        return el;
     }
 
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
