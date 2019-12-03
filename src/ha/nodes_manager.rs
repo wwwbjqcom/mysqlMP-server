@@ -279,9 +279,7 @@ impl ElectionMaster {
         //buf.push(type_code.get_code());
         //send_packet(&buf, &mut conn)?;
         send_value_packet(&mut conn, value, type_code)?;
-        info!("aa");
         let packet = rec_packet(&mut conn)?;
-        info!("bb");
         let type_code = MyProtocol::new(&packet[0]);
         match type_code {
             MyProtocol::Ok => {
