@@ -239,8 +239,10 @@ impl ElectionMaster {
     /// 从新master获取读取的binlog信息以及gtid信息
     /// 
     fn get_recovery_info(&mut self) -> Result<(), Box<dyn Error>> {
+        info!("get recovery info from");
         for node in &self.slave_nodes {
             if node.new_master {
+                info!("get from host : {}", &node.host);
                 self.ha_log.recovery_info = RecoveryInfo::new(node.host.clone(), node.dbport.clone())?;
 //                let mut conn = crate::ha::conn(&node.host)?;
 //                let host_info = node.host.split(":");
@@ -276,13 +278,8 @@ impl ElectionMaster {
         //buf.push(type_code.get_code());
         //send_packet(&buf, &mut conn)?;
         send_value_packet(&mut conn, value, type_code)?;
-        info!("bb");
         let packet = rec_packet(&mut conn)?;
-        info!("aa");
         let type_code = MyProtocol::new(&packet[0]);
-        info!("{:?}",type_code);
-
-        info!("{:?}",type_code);
         match type_code {
             MyProtocol::Ok => {
                 info!("{} change Ok", host);
