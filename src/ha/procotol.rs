@@ -417,7 +417,7 @@ pub fn send_value_packet<T: Serialize>(mut tcp: &TcpStream, value: &T, type_code
 pub fn rec_packet(conn: &mut TcpStream) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut buf: Vec<u8> = vec![];
     let mut header: Vec<u8> = vec![0u8;9];
-    conn.read_to_end(&mut header)?;
+    conn.read_exact(&mut header)?;
     let payload = crate::readvalue::read_u64(&header[1..]);
     let mut payload_buf: Vec<u8> = vec![0u8; payload as usize];
     conn.read_exact(&mut payload_buf)?;
