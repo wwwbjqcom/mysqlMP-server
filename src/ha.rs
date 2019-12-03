@@ -189,7 +189,6 @@ fn get_node_state_from_host(host_info: &str) -> Result<MysqlState, Box<dyn Error
     //send_packet(&buf, &mut conn)?;
     let packet = rec_packet(&mut conn)?;
     let type_code = MyProtocol::new(&packet[0]);
-    info!("{:?}", type_code);
     match type_code {
         MyProtocol::MysqlCheck => {
             let value: MysqlState = serde_json::from_slice(&packet[9..])?;
