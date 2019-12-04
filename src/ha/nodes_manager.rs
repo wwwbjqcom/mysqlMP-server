@@ -9,7 +9,7 @@ use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, conn, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState, ReponseErr};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState, ReponseErr, RowsSql};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -128,15 +128,17 @@ impl RecoveryDownNode {
         if !self.revovery_status {
             let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.recovery_info)?;
             match response_value.type_code {
-                MyProtocol::Ok => {
+                MyProtocol::RecoveryValue => {
                     info!("host: {} recovery success", &self.host);
+                    let v: RowsSql = serde_json::from_slice(&response_value.value)?;
+                    info!("{:?}", &v);
                     //执行修改路由
                 }
                 MyProtocol::Error => {
                     let e: ReponseErr = serde_json::from_slice(&response_value.value)?;
                     return Box::new(Err(e.err)).unwrap();
                 }
-                _ => {}
+                _ => {info!("return invalid type code:{:?}", &response_value.type_code);}
             }
             return Ok(())
         }
