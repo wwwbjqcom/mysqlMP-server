@@ -15,7 +15,7 @@ pub enum CfNameTypeCode {
     HaChangeLog,            //宕机切换日志
     NodesState,             //每个节点的状态数据
     SystemData,             //系统数据
-    CheckState,
+    CheckState,             //存储宕机状态的节点信息
 }
 
 impl CfNameTypeCode {
