@@ -144,7 +144,8 @@ impl DbInfo {
     pub fn prefix_iterator(&self, prefix: &String, cf_name: &String) -> Result<Vec<KeyValue>, Box<dyn Error>> {
         self.check_cf(cf_name)?;
         if let Some(cf) = self.db.cf_handle(cf_name) {
-            let a = [("prefix_extractor", prefix.as_str())];
+            let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(prefix.len());
+            let a = [("prefix_extractor", &prefix_extractor.into())];
             self.db.set_options(&a)?;
             //let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(prefix.len());
             let iter = self.db.prefix_iterator_cf(cf,prefix)?;
