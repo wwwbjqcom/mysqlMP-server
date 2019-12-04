@@ -139,6 +139,10 @@ impl RecoveryDownNode {
                     let e: ReponseErr = serde_json::from_slice(&response_value.value)?;
                     return Box::new(Err(e.err)).unwrap();
                 }
+                MyProtocol::Ok => {
+                    info!("host: {} recovery success", &self.host);
+                    //执行修改路由
+                }
                 _ => {info!("return invalid type code:{:?}", &response_value.type_code);}
             }
             return Ok(())
