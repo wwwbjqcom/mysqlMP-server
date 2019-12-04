@@ -5,7 +5,7 @@
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use crate::storage;
-use crate::storage::rocks::{DbInfo, KeyValue};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, ReponseErr};
 use std::error::Error;
 use crate::ha::nodes_manager::SwitchForNodes;
@@ -232,8 +232,10 @@ impl SwitchLog {
     }
 
     fn get_all(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let cf_name = String::from("Ha_change_log");
-        let result = db.iterator(&cf_name, &String::from(""));
+        //let cf_name = String::from("Ha_change_log");
+        //let result = db.iterator(&cf_name, &String::from(""));
+        let host = String::from("10.0.1.112");
+        let result = db.prefix_iterator(&host, &CfNameTypeCode::HaChangeLog.get());
         match result {
             Ok(v) => {
                 for row in v{
