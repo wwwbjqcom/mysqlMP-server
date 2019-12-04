@@ -126,6 +126,7 @@ impl RecoveryDownNode {
         }
 
         if !self.revovery_status {
+            info!("recovery info: {:?}", self.recovery_info);
             let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.recovery_info)?;
             match response_value.type_code {
                 MyProtocol::RecoveryValue => {
