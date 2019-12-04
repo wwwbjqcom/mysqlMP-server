@@ -93,6 +93,56 @@ impl MyProtocol {
         }
     }
 
+    pub fn socket_io<T: Serialize>(&self, host: &String, value: &T) -> Result<RecPacket, Box<dyn Error>> {
+        let mut conn = crate::ha::conn(host)?;
+        self.send_value_packet(&mut conn, value)?;
+        let packet = self.rec_packet(&mut conn)?;
+        return Ok(packet);
+    }
+
+    fn send_value_packet<T: Serialize>(&self, mut tcp: &TcpStream, value: &T) -> Result<(), Box<dyn Error>> {
+        let value = serde_json::to_string(value)?;
+        let mut buf = self.header(value.len() as u64);
+        buf.extend(value.as_bytes());
+        tcp.write(buf.as_ref())?;
+        tcp.flush()?;
+        Ok(())
+    }
+
+    fn header(&self,payload: u64) -> Vec<u8> {
+        let mut buf: Vec<u8> = vec![];
+        buf.push(self.get_code());
+        let payload = crate::readvalue::write_u64(payload);
+        buf.extend(payload);
+        return buf;
+    }
+
+    ///
+    /// 接收client返回的数据
+    ///
+    fn rec_packet(&self, conn: &mut TcpStream) -> Result<RecPacket, Box<dyn Error>> {
+        let mut header: Vec<u8> = vec![0u8;9];
+        conn.read_exact(&mut header)?;
+        let payload = crate::readvalue::read_u64(&header[1..]);
+        let mut payload_buf: Vec<u8> = vec![0u8; payload as usize];
+        conn.read_exact(&mut payload_buf)?;
+        let a = RecPacket{
+            type_code: MyProtocol::new(&header[0]),
+            payload,
+            value: payload_buf
+        };
+        Ok(a)
+    }
+}
+
+///
+/// 返回的包
+///
+#[derive(Serialize)]
+pub struct RecPacket{
+    pub type_code: MyProtocol,
+    pub payload: u64,
+    pub value: Vec<u8>
 }
 
 ///

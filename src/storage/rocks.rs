@@ -7,7 +7,6 @@ use rocksdb::{DB, Options, DBCompactionStyle};
 use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 
 
 pub enum CfNameTypeCode {

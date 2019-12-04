@@ -3,13 +3,13 @@
 @datetime: 2019/11/22
 */
 
-use actix_web::web;
+use actix_web::{web};
 use std::sync::{mpsc, Arc, Mutex};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, conn, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState, ReponseErr};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -78,6 +78,13 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                 info!("{}", e.to_string());
             };
         }else {
+            info!("host: {} is running...", &r.host);
+            info!("start recovery...");
+            let mut reco = RecoveryDownNode::new(r.host.clone());
+            if let Err(e) = reco.recovery(&db){
+                info!("Error: {}", e.to_string());
+                return;
+            }
             info!("node: {} recovery success, delete status now...", r.host);
             let state = CheckState::new(0);
             if let Err(e) = state.delete_from_db(&db, &r.host){
@@ -93,6 +100,8 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
 pub struct RecoveryDownNode{
     host: String,
     recovery_info: RecoveryInfo,
+    revovery_status: bool,
+    switch_status: bool,
 }
 
 impl RecoveryDownNode {
@@ -103,16 +112,47 @@ impl RecoveryDownNode {
             gtid: "".to_string(),
             masterhost: "".to_string(),
             masterport: 0
-        } }
+        },
+            revovery_status: false,
+            switch_status: false
+        }
     }
 
     fn recovery(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        self.get_recovery_info(db)?;
+        if !self.switch_status{
+            info!("when the machine({}) was shut down during the year, the switchover failed, and the recovery operation could not be performed",&self.host);
+            return Ok(());
+        }
+
+        if !self.revovery_status {
+            let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.recovery_info)?;
+            match response_value.type_code {
+                MyProtocol::Ok => {
+                    info!("host: {} recovery success", &self.host);
+                    //执行修改路由
+                }
+                MyProtocol::Error => {
+                    let e: ReponseErr = serde_json::from_slice(&response_value.value)?;
+                    return Box::new(Err(e.err)).unwrap();
+                }
+                _ => {}
+            }
+            return Ok(())
+        }
+
         Ok(())
     }
 
     fn get_recovery_info(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let mut result = db.prefix_iterator(&self.host, &CfNameTypeCode::HaChangeLog.get())?;
-        result.sort_by(|a, b| b.key.cmp(&a.key));
+        if result.len() > 0 {
+            result.sort_by(|a, b| b.key.cmp(&a.key));
+            let value: HaChangeLog = serde_json::from_str(&result[0].value)?;
+            self.recovery_info = value.recovery_info;
+            self.revovery_status = value.recovery_status;
+            self.switch_status = value.switch_status;
+        }
         Ok(())
     }
 }
