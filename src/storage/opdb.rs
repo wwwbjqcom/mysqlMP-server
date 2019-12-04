@@ -4,7 +4,7 @@
 */
 use actix_web::{web};
 use crate::webroute::route::HostInfo;
-use crate::storage::rocks::{DbInfo, KeyValue};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
 use crate::ha::nodes_manager::SlaveInfo;
@@ -96,10 +96,16 @@ impl HaChangeLog {
 
     pub fn save(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let key = format!("{}_{}",self.key.clone(), crate::timestamp());
-        let cf_name = String::from("Ha_change_log");
         let value = serde_json::to_string(self)?;
         let row = KeyValue{key, value};
-        db.put(&row, &cf_name)?;
+        db.put(&row, &CfNameTypeCode::HaChangeLog.get())?;
+        return Ok(());
+    }
+
+    pub fn update(&self, db: &web::Data<DbInfo>, row_key: String) -> Result<(), Box<dyn Error>> {
+        let value = serde_json::to_string(self)?;
+        let row = KeyValue{key: row_key, value};
+        db.put(&row, &CfNameTypeCode::HaChangeLog.get())?;
         return Ok(());
     }
 }

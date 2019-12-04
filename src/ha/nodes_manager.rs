@@ -99,38 +99,32 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
 ///
 pub struct RecoveryDownNode{
     host: String,
-    recovery_info: RecoveryInfo,
-    revovery_status: bool,
-    switch_status: bool,
+    ha_log: HaChangeLog,
+    ha_log_key: String,
 }
 
 impl RecoveryDownNode {
     fn new(host: String) -> RecoveryDownNode {
-        RecoveryDownNode{ host, recovery_info: RecoveryInfo {
-            binlog: "".to_string(),
-            position: 0,
-            gtid: "".to_string(),
-            masterhost: "".to_string(),
-            masterport: 0
-        },
-            revovery_status: false,
-            switch_status: false
+        RecoveryDownNode{ host,
+            ha_log: HaChangeLog::new(),
+            ha_log_key: "".to_string(),
         }
     }
 
     fn recovery(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         self.get_recovery_info(db)?;
-        if !self.switch_status{
+        if !self.ha_log.switch_status{
             info!("when the machine({}) was shut down during the year, the switchover failed, and the recovery operation could not be performed",&self.host);
             return Ok(());
         }
 
-        if !self.revovery_status {
-            info!("recovery info: {:?}", self.recovery_info);
-            let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.recovery_info)?;
+        if !self.ha_log.recovery_status {
+            info!("recovery info: {:?}", self.ha_log.recovery_info);
+            let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.ha_log.recovery_info)?;
             match response_value.type_code {
                 MyProtocol::RecoveryValue => {
                     info!("host: {} recovery success", &self.host);
+                    self.ha_log.update(db, self.ha_log_key.clone())?;
                     let v: RowsSql = serde_json::from_slice(&response_value.value)?;
                     info!("{:?}", &v);
                     //执行修改路由
@@ -141,6 +135,7 @@ impl RecoveryDownNode {
                 }
                 MyProtocol::Ok => {
                     info!("host: {} recovery success", &self.host);
+                    self.ha_log.update(db, self.ha_log_key.clone())?;
                     //执行修改路由
                 }
                 _ => {info!("return invalid type code:{:?}", &response_value.type_code);}
@@ -156,9 +151,8 @@ impl RecoveryDownNode {
         if result.len() > 0 {
             result.sort_by(|a, b| b.key.cmp(&a.key));
             let value: HaChangeLog = serde_json::from_str(&result[0].value)?;
-            self.recovery_info = value.recovery_info;
-            self.revovery_status = value.recovery_status;
-            self.switch_status = value.switch_status;
+            self.ha_log_key = result[0].key.clone();
+            self.ha_log = value;
         }
         Ok(())
     }
