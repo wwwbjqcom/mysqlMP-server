@@ -7,6 +7,7 @@ use rocksdb::{DB, Options, DBCompactionStyle};
 use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
 
 pub enum CfNameTypeCode {
@@ -145,7 +146,7 @@ impl DbInfo {
         self.check_cf(cf_name)?;
         if let Some(cf) = self.db.cf_handle(cf_name) {
             let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(prefix.len());
-            let a = [("prefix_extractor", &prefix_extractor.into())];
+            let a = [("set_prefix_extractor", prefix.as_str())];
             self.db.set_options(&a)?;
             //let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(prefix.len());
             let iter = self.db.prefix_iterator_cf(cf,prefix)?;
