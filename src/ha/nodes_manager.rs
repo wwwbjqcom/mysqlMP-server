@@ -5,7 +5,7 @@
 
 use actix_web::web;
 use std::sync::{mpsc, Arc, Mutex};
-use crate::storage::rocks::{DbInfo, KeyValue};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, conn, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
@@ -50,16 +50,14 @@ impl CheckState {
     }
 
     fn update_db(&self, db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
-        let cf_name = String::from("Check_state");
         let value = serde_json::to_string(&self)?;
         let a = KeyValue{key: key.clone(), value: (&value).parse()? };
-        db.put(&a, &cf_name)?;
+        db.put(&a, &CfNameTypeCode::CheckState.get())?;
         Ok(())
     }
 
     fn delete_from_db(&self, db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
-        let cf_name = String::from("Check_state");
-        db.delete(key, &cf_name)?;
+        db.delete(key, &CfNameTypeCode::CheckState.get())?;
         Ok(())
     }
 }
@@ -71,7 +69,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
     loop {
         let r = rec.recv().unwrap();
         if !r.online {
-            info!("master {:?} is down for cluster {:?}....", r.host, r.cluster_name);
+            info!("host {:?} is down for cluster {:?}....", r.host, r.cluster_name);
             info!("check network......");
             //let nodes = crate::ha::get_nodes_info(&db);
             let down_node = procotol::DownNodeCheck::new(r.host, r.dbport);
@@ -122,8 +120,7 @@ impl ElectionMaster {
     }
 
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let cf_name = String::from("Ha_nodes_info");
-        let result = db.iterator(&cf_name,&String::from(""))?;
+        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
         let (rt, rc) = mpsc::channel();
         let rt= Arc::new(Mutex::new(rt));
         let mut count = 0 as usize;
@@ -178,6 +175,10 @@ impl ElectionMaster {
     fn change(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         self.check_state.update_db(&db, &self.down_node_info.host)?;
         info!("{:?}", self.check_state);
+        if !self.is_master(db)?{
+            info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
+            return Ok(());
+        }
         if self.check_state.db_down {
             // mysql实例宕机
             //if self.check_state.client_down {
@@ -297,6 +298,16 @@ impl ElectionMaster {
             }
         }
     }
+
+    fn is_master(&self, db: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>> {
+        if let Ok(r) = db.get(&self.down_node_info.host, &CfNameTypeCode::NodesState.get()){
+            let state: MysqlState = serde_json::from_str(&r.value)?;
+            if state.role == "master".to_string() {
+                return Ok(true);
+            }
+        };
+        return Ok(false);
+    }
 }
 
 
@@ -339,8 +350,7 @@ pub struct SlaveInfo {
 }
 impl SlaveInfo {
     fn new(host: String, dbport: usize, db: &web::Data<DbInfo>) -> Result<SlaveInfo, Box<dyn Error>> {
-        let cf_name = String::from("Nodes_state");
-        let node_info = db.get(&host, &cf_name)?;
+        let node_info = db.get(&host, &CfNameTypeCode::NodesState.get())?;
         let node_info: MysqlState = serde_json::from_str(&node_info.value)?;
         Ok(SlaveInfo {
             host,
@@ -394,7 +404,7 @@ impl SwitchForNodes {
     }
 
     pub fn switch(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
-        let cf_name = String::from("Ha_nodes_info");
+        let cf_name = CfNameTypeCode::HaNodesInfo.get();
         let node_info = db.get(&self.host, &cf_name)?;
         let node_info: HostInfoValue = serde_json::from_str(&node_info.value)?;
         self.cluster_name = node_info.cluster_name;

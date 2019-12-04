@@ -3,7 +3,7 @@
 @datetime: 2019/11/15
 */
 
-use crate::storage::rocks::{DbInfo, KeyValue};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use std::{thread, time};
 use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState, send_value_packet};
 use std::error::Error;
@@ -12,6 +12,7 @@ use std::time::Duration;
 
 pub mod procotol;
 pub mod nodes_manager;
+pub mod slave_manager;
 use procotol::{rec_packet};
 use actix_web::web;
 use std::sync::{mpsc};
@@ -40,6 +41,7 @@ impl NodesInfo {
             self.value.online = false;
             self.update_value(db)?;
             self.send_down_info(sender, false);
+
         }
         Ok(())
     }
@@ -74,10 +76,9 @@ impl NodesInfo {
     ///
     fn update_nodes_state(&mut self, db: &web::Data<DbInfo>, nodes_state: &MysqlState) -> Result<(), Box<dyn Error>> {
         if self.value.online {
-            let state_cf_name = String::from("Nodes_state");
             let value = serde_json::to_string(nodes_state)?;
             let a = KeyValue{key: (&self.key).parse()?, value };
-            db.put(&a, &state_cf_name)?;
+            db.put(&a, &CfNameTypeCode::NodesState.get())?;
         }
         Ok(())
     }
@@ -165,7 +166,7 @@ pub fn ha_manager(db: web::Data<DbInfo>,  sender: mpsc::Sender<DownNodeInfo>) {
 ///
 fn get_nodes_info(db: &web::Data<DbInfo>) -> Result<Vec<NodesInfo>, Box<dyn Error>> {
     let mut nodes_info: Vec<NodesInfo> = vec![];
-    let cf_name = String::from("Ha_nodes_info");
+    let cf_name = CfNameTypeCode::HaNodesInfo.get();
     let all_nodes_info = db.iterator(&cf_name, &String::from(""))?;
     for row in all_nodes_info{
         let value = serde_json::from_str(&row.value)?;

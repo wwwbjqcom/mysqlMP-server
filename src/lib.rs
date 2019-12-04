@@ -80,7 +80,10 @@ pub fn start_web(db: DbInfo) {
     });
 
     //slave节点管理线程
-
+//    let c = rcdb.clone();
+//    thread::spawn(move||{
+//        ha::slave_manager::manager();
+//    });
 
 
     //web服务

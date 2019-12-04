@@ -8,6 +8,30 @@ use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
 
+
+pub enum CfNameTypeCode {
+    HaNodesInfo,            //保存节点基础数据
+    RollbackSqlInfo,        //保存宕机切换产生的回滚数据
+    HaChangeLog,            //宕机切换日志
+    NodesState,             //每个节点的状态数据
+    SystemData,             //系统数据
+    CheckState,
+}
+
+impl CfNameTypeCode {
+    pub fn get(&self) -> String {
+        match self{
+            CfNameTypeCode::HaNodesInfo => String::from("Ha_nodes_info"),
+            CfNameTypeCode::RollbackSqlInfo => String::from("Rollback_sql_info"),
+            CfNameTypeCode::HaChangeLog => String::from("Ha_change_log"),
+            CfNameTypeCode::SystemData => String::from("System_data"),
+            CfNameTypeCode::NodesState => String::from("Nodes_state"),
+            CfNameTypeCode::CheckState => String::from("Check_state")
+        }
+    }
+}
+
+
 #[derive(Deserialize, Debug, Serialize)]
 pub struct KeyValue{
     pub key: String,
@@ -148,7 +172,6 @@ impl DbInfo {
         return  Box::new(Err(a)).unwrap();
 
     }
-
 }
 
 fn init_db(cf_names: &Vec<String>) -> Result<DB, Box<dyn Error>> {
