@@ -87,7 +87,41 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }
     }
 }
+///
+/// 宕机节点恢复
+///
+pub struct RecoveryDownNode{
+    host: String,
+    recovery_info: RecoveryInfo,
+}
 
+impl RecoveryDownNode {
+    fn new(host: String) -> RecoveryDownNode {
+        RecoveryDownNode{ host, recovery_info: RecoveryInfo {
+            binlog: "".to_string(),
+            position: 0,
+            gtid: "".to_string(),
+            masterhost: "".to_string(),
+            masterport: 0
+        } }
+    }
+
+    fn recovery(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn get_recovery_info(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let mut result = db.prefix_iterator(&self.host, &CfNameTypeCode::HaChangeLog.get())?;
+        result.sort_by(|a, b| b.key.cmp(&a.key));
+        Ok(())
+    }
+}
+
+
+
+///
+/// 用于切换主从关系、保存切换日志等信息
+///
 pub struct ElectionMaster {
     pub cluster_name: String,
     pub down_node_info: DownNodeCheck,

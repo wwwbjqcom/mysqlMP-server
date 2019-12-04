@@ -33,7 +33,7 @@ impl CfNameTypeCode {
 }
 
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Deserialize, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct KeyValue{
     pub key: String,
     pub value: String
