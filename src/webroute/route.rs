@@ -232,12 +232,12 @@ impl SwitchLog {
     }
 
     fn get_all(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        //let result = db.iterator(&CfNameTypeCode::HaChangeLog.get(), &String::from(""));
-        let host = String::from("10.0.1.111");
-        let result = db.prefix_iterator(&host, &CfNameTypeCode::HaChangeLog.get());
+        let result = db.iterator(&CfNameTypeCode::HaChangeLog.get(), &String::from(""));
+//        let host = String::from("10.0.1.112");
+//        let result = db.prefix_iterator(&host, &CfNameTypeCode::HaChangeLog.get());
         match result {
-            Ok(mut v) => {
-                v.sort_by(|a, b| b.key.cmp(&a.key));
+            Ok(v) => {
+                //v.sort_by(|a, b| b.key.cmp(&a.key));
                 for row in v{
                     let value: HaChangeLog = serde_json::from_str(&row.value)?;
                     let row = RowLog{ row_key: row.key, data: value };

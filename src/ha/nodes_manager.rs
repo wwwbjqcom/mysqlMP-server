@@ -147,11 +147,19 @@ impl RecoveryDownNode {
     }
 
     fn get_recovery_info(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let mut result = db.prefix_iterator(&self.host, &CfNameTypeCode::HaChangeLog.get())?;
-        if result.len() > 0 {
-            result.sort_by(|a, b| b.key.cmp(&a.key));
-            let value: HaChangeLog = serde_json::from_str(&result[0].value)?;
-            self.ha_log_key = result[0].key.clone();
+        let result = db.prefix_iterator(&self.host, &CfNameTypeCode::HaChangeLog.get())?;
+        let mut tmp = vec![];
+        for row in result {
+            let a = row.key.split("_");
+            let host_vec = a.collect::<Vec<&str>>();
+            if self.host == host_vec[0].to_string() {
+                tmp.push(row);
+            }
+        }
+        if tmp.len() > 0 {
+            tmp.sort_by(|a, b| b.key.cmp(&a.key));
+            let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
+            self.ha_log_key = tmp[0].key.clone();
             self.ha_log = value;
         }
         Ok(())
