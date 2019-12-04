@@ -79,7 +79,7 @@ pub fn start_web(db: DbInfo) {
         ha::nodes_manager::manager(b, state_rx);
     });
 
-    //slave节点管理线程
+    //slave延迟管理线程
 //    let c = rcdb.clone();
 //    thread::spawn(move||{
 //        ha::slave_manager::manager();

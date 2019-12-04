@@ -216,9 +216,14 @@ fn response_value<F: Serialize>(value: &F) -> HttpResponse {
 ///
 ///
 #[derive(Deserialize, Serialize)]
+pub struct RowLog {
+    row_key: String,
+    data: HaChangeLog
+}
+#[derive(Deserialize, Serialize)]
 pub struct SwitchLog{
     status: usize,
-    log_data: Vec<HaChangeLog>
+    log_data: Vec<RowLog>
 }
 
 impl SwitchLog {
@@ -233,7 +238,8 @@ impl SwitchLog {
             Ok(v) => {
                 for row in v{
                     let value: HaChangeLog = serde_json::from_str(&row.value)?;
-                    self.log_data.push(value);
+                    let row = RowLog{ row_key: row.key, data: value };
+                    self.log_data.push(row);
                 }
                 return Ok(());
             }

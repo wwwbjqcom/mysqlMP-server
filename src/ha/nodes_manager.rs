@@ -88,7 +88,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
     }
 }
 
-
 pub struct ElectionMaster {
     pub cluster_name: String,
     pub down_node_info: DownNodeCheck,
