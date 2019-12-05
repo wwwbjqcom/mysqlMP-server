@@ -365,7 +365,7 @@ impl ElectionMaster {
                 return Ok(true);
             }
         };
-        self.check_state.role = "master".to_string();
+        self.check_state.role = "slave".to_string();
         self.check_state.update_db(&db, &self.down_node_info.host)?;
         return Ok(false);
     }
