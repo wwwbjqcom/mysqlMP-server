@@ -124,7 +124,7 @@ impl RecoveryDownNode {
             match response_value.type_code {
                 MyProtocol::RecoveryValue => {
                     info!("host: {} recovery success", &self.host);
-                    self.ha_log.update(db, self.ha_log_key.clone())?;
+                    self.update_state(db)?;
                     let v: RowsSql = serde_json::from_slice(&response_value.value)?;
                     info!("{:?}", &v);
                     //执行修改路由
@@ -135,7 +135,7 @@ impl RecoveryDownNode {
                 }
                 MyProtocol::Ok => {
                     info!("host: {} recovery success", &self.host);
-                    self.ha_log.update(db, self.ha_log_key.clone())?;
+                    self.update_state(db)?;
                     //执行修改路由
                 }
                 _ => {info!("return invalid type code:{:?}", &response_value.type_code);}
@@ -150,9 +150,7 @@ impl RecoveryDownNode {
         let result = db.prefix_iterator(&self.host, &CfNameTypeCode::HaChangeLog.get())?;
         let mut tmp = vec![];
         for row in result {
-            let a = row.key.split("_");
-            let host_vec = a.collect::<Vec<&str>>();
-            if self.host == host_vec[0].to_string() {
+            if row.key.starts_with(&self.host){
                 tmp.push(row);
             }
         }
@@ -162,6 +160,12 @@ impl RecoveryDownNode {
             self.ha_log_key = tmp[0].key.clone();
             self.ha_log = value;
         }
+        Ok(())
+    }
+
+    fn update_state(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        self.ha_log.recovery_status = true;
+        self.ha_log.update(db, self.ha_log_key.clone())?;
         Ok(())
     }
 }

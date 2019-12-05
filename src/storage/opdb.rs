@@ -102,7 +102,7 @@ impl HaChangeLog {
         return Ok(());
     }
 
-    pub fn update(&self, db: &web::Data<DbInfo>, row_key: String) -> Result<(), Box<dyn Error>> {
+    pub fn update(&mut self, db: &web::Data<DbInfo>, row_key: String) -> Result<(), Box<dyn Error>> {
         let value = serde_json::to_string(self)?;
         let row = KeyValue{key: row_key, value};
         db.put(&row, &CfNameTypeCode::HaChangeLog.get())?;
