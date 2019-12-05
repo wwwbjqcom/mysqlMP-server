@@ -489,6 +489,7 @@ impl SwitchForNodes {
             if state.seconds_behind > 0 { continue; };
             info!("get repl info from new master...");
             self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
+            info!("replication info: {:?}", &self.repl_info);
             break;
         }
         Ok(())
@@ -498,6 +499,11 @@ impl SwitchForNodes {
         let mut err_host = vec![];
         for slave in &self.slave_nodes_info {
             info!("change {}",&slave.host);
+            if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host) {
+                info!("host: {}, set master error: {}",&slave.host, e.to_string());
+                err_host.push(slave.host.clone());
+                continue;
+            }
             if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&slave.host, &self.repl_info){
                 info!("host: {}, change error: {}",&slave.host, e.to_string());
                 err_host.push(slave.host.clone());
