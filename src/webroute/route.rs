@@ -192,6 +192,7 @@ pub struct SwitchInfo {
     pub host: String,
 }
 pub fn switch(data: web::Data<DbInfo>, info: web::Form<SwitchInfo>) -> HttpResponse {
+    info!("manually switch {} to master", info.host);
     let mut switch_info = SwitchForNodes::new(&info.host);
     return response(switch_info.switch(&data));
 }

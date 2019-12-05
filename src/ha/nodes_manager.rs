@@ -427,6 +427,7 @@ impl SwitchForNodes {
     }
 
     pub fn switch(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        info!("start.....");
         let cf_name = CfNameTypeCode::HaNodesInfo.get();
         let node_info = db.get(&self.host, &cf_name)?;
         let node_info: HostInfoValue = serde_json::from_str(&node_info.value)?;
@@ -436,6 +437,7 @@ impl SwitchForNodes {
         self.set_master_variables()?;
         self.get_repl_info()?;
         self.run_switch()?;
+        info!("Ok");
         Ok(())
     }
 
@@ -468,13 +470,8 @@ impl SwitchForNodes {
     /// 对当前master进行read only设置，关闭写入直到slave延迟为0
     ///
     fn set_master_variables(&self) -> Result<(), Box<dyn Error>> {
+        info!("set old master is readonly...");
         MyProtocol::SetVariables.send_myself(&self.old_master_info.host)?;
-//        let mut conn = conn(&self.old_master_info.host)?;
-//        procotol::send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetVariables)?;
-//        if let Err(e) = self.rec_info(&mut conn){
-//            let a = format!("set old master {} variables error: {}",&self.old_master_info.host,e);
-//            return Box::new(Err(a)).unwrap();
-//        };
         Ok(())
     }
 
@@ -486,9 +483,11 @@ impl SwitchForNodes {
     /// 需等待seconds_behind为0时才进行切换
     ///
     fn get_repl_info(&mut self) -> Result<(), Box<dyn Error>> {
+        info!("wait new master seconds_behind is zero");
         loop {
             let state = get_node_state_from_host(&self.host)?;
             if state.seconds_behind > 0 { continue; };
+            info!("get repl info from new master...");
             self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
             break;
         }
@@ -498,6 +497,7 @@ impl SwitchForNodes {
     fn run_switch(&mut self) -> Result<(), Box<dyn Error>> {
         let mut err_host = vec![];
         for slave in &self.slave_nodes_info {
+            info!("change {}",&slave.host);
             if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&slave.host, &self.repl_info){
                 info!("host: {}, change error: {}",&slave.host, e.to_string());
                 err_host.push(slave.host.clone());
@@ -509,11 +509,12 @@ impl SwitchForNodes {
         }
 
         //切换旧master为slave
+        info!("change old master {}", &self.old_master_info.host);
         if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&self.old_master_info.host, &self.repl_info){
             let err = format!("switch failed host list : {:?} {:?}", err_host, e.to_string());
             return Box::new(Err(err)).unwrap();
         }
-
+        info!("set master for {}", &self.host);
         MyProtocol::SetMaster.send_myself(&self.host)?;
         return Ok(());
     }

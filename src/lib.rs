@@ -24,6 +24,7 @@ use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::config::{Appender, Root};
+//use actix_web::middleware::Logger;
 
 fn init_log() {
     let stdout = ConsoleAppender::builder().build();
@@ -111,7 +112,7 @@ pub fn start_web(db: DbInfo) {
             .route("/pages/DBHA/editnode", web::post().to(webroute::route::edit_nodes))
             .route("/pages/DBHA/deletenode", web::post().to(webroute::route::delete_node))
             .route("/pages/DBHA/setmaintain", web::post().to(webroute::route::edit_maintain))
-            .route("/pages/DBHA//switch", web::post().to(webroute::route::switch))
+            .route("/pages/DBHA/switch", web::post().to(webroute::route::switch))
             .route("/pages/logs/getlogdata", web::post().to(webroute::route::switchlog))
             .route("/{filename:.*}", web::get().to(webroute::index_static))
             .default_service(
