@@ -25,10 +25,11 @@ pub struct CheckState {
     pub all_nodes: usize,
     pub db_down: bool,
     pub client_down: bool,
+    pub role: String,
 }
 impl CheckState {
     fn new(all_nodes: usize) -> CheckState{
-        CheckState{ db_offline: 0, client_offline: 0, all_nodes, db_down: false, client_down: false}
+        CheckState{ db_offline: 0, client_offline: 0, all_nodes, db_down: false, client_down: false, role: "".to_string() }
     }
     fn check(&mut self, state: &DownNodeCheckStatus) {
         if state.host.len() > 0 {
@@ -59,6 +60,15 @@ impl CheckState {
         db.delete(key, &CfNameTypeCode::CheckState.get())?;
         Ok(())
     }
+
+    fn is_slave(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
+        let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
+        let value: CheckState = serde_json::from_str(&result.value)?;
+        if value.role == "master".to_string(){
+            return Ok(false);
+        }
+        return Ok(true);
+    }
 }
 
 ///
@@ -78,6 +88,17 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             };
         }else {
             info!("host: {} is running...", &r.host);
+            let state = CheckState::new(0);
+            if let Ok(f) = state.is_slave(&db, &r.host){
+                if f{
+                    info!("slave node: {}, delete status now...", &r.host);
+                    if let Err(e) = state.delete_from_db(&db, &r.host){
+                        info!("{:?}",e.to_string());
+                    };
+                    info!("Ok");
+                    return;
+                }
+            }
             info!("start recovery...");
             let mut reco = RecoveryDownNode::new(r.host.clone());
             if let Err(e) = reco.recovery(&db){
@@ -85,7 +106,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                 return;
             }
             info!("node: {} recovery success, delete status now...", r.host);
-            let state = CheckState::new(0);
             if let Err(e) = state.delete_from_db(&db, &r.host){
                 info!("{:?}",e.to_string());
             };
@@ -193,7 +213,8 @@ impl ElectionMaster {
                 client_offline: 0,
                 all_nodes: 0,
                 db_down: false,
-                client_down: false
+                client_down: false,
+                role: "".to_string()
             },
             slave_nodes: vec![],
             ha_log: HaChangeLog::new()
@@ -258,12 +279,11 @@ impl ElectionMaster {
     /// 执行切换操作
     /// 
     fn change(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        self.check_state.update_db(&db, &self.down_node_info.host)?;
-        info!("{:?}", self.check_state);
         if !self.is_master(db)?{
             info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
             return Ok(());
         }
+        info!("{:?}", self.check_state);
         if self.check_state.db_down {
             // mysql实例宕机
             //if self.check_state.client_down {
@@ -336,13 +356,16 @@ impl ElectionMaster {
         Ok(())
     }
 
-    fn is_master(&self, db: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>> {
+    fn is_master(&mut self, db: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>> {
         if let Ok(r) = db.get(&self.down_node_info.host, &CfNameTypeCode::NodesState.get()){
             let state: MysqlState = serde_json::from_str(&r.value)?;
             if state.role == "master".to_string() {
+                self.check_state.role = "master".to_string();
                 return Ok(true);
             }
         };
+        self.check_state.role = "master".to_string();
+        self.check_state.update_db(&db, &self.down_node_info.host)?;
         return Ok(false);
     }
 }
@@ -524,13 +547,6 @@ impl SwitchForNodes {
         MyProtocol::SetMaster.send_myself(&self.host)?;
         return Ok(());
     }
-
-//    fn run_change_to_node(&self, node: &HostInfoValueGetAllState) -> Result<(), Box<dyn Error>> {
-//        let mut conn = conn(&node.host)?;
-//        send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
-//        self.rec_info(&mut conn)?;
-//        Ok(())
-//    }
 
     ///
     /// 切换失败恢复master状态
