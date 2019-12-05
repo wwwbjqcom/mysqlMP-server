@@ -97,14 +97,14 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                         info!("{:?}",e.to_string());
                     };
                     info!("Ok");
-                    return;
+                    continue;
                 }
             }
             info!("start recovery...");
             let mut reco = RecoveryDownNode::new(r.host.clone());
             if let Err(e) = reco.recovery(&db){
                 info!("Error: {}", e.to_string());
-                return;
+                continue;
             }
             info!("node: {} recovery success, delete status now...", r.host);
             if let Err(e) = state.delete_from_db(&db, &r.host){
