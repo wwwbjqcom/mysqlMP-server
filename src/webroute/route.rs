@@ -233,8 +233,7 @@ impl SwitchLog {
     }
 
     fn get_all(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        //let result = db.iterator(&CfNameTypeCode::HaChangeLog.get(), &String::from(""));
-        let result = db.iterator(&CfNameTypeCode::CheckState.get(), &String::from(""));
+        let result = db.iterator(&CfNameTypeCode::HaChangeLog.get(), &String::from(""));
 //        let host = String::from("10.0.1.112");
 //        let result = db.prefix_iterator(&host, &CfNameTypeCode::HaChangeLog.get());
         match result {
