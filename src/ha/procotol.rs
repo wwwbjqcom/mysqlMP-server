@@ -9,7 +9,6 @@ use std::error::Error;
 use std::io::{Read, Write};
 use actix_web::{web, HttpResponse};
 use crate::webroute::route::{EditInfo, EditMainTain};
-use crate::ha::procotol;
 
 #[derive(Debug, Serialize)]
 pub enum  MyProtocol {
@@ -90,6 +89,77 @@ impl MyProtocol {
             MyProtocol::SetVariables => 0x04,
             MyProtocol::RecoveryVariables => 0x03,
             MyProtocol::UnKnow => 0xff
+        }
+    }
+
+    ///
+    /// 发送无数据的协议并返回数据，用于拉取数据
+    ///
+    pub fn get_packet(&self, host: &String) -> Result<RecPacket, Box<dyn Error>>{
+        let packet_value = Null::new();
+        let packet = self.socket_io(host, &packet_value)?;
+        return Ok(packet);
+    }
+
+    ///
+    ///
+    pub fn change_master(&self, host: &String, buf: &ChangeMasterInfo) -> Result<(), Box<dyn Error>> {
+        let packet = self.socket_io(host, buf)?;
+        return self.response_code_check(&packet);
+    }
+
+    ///
+    /// 宕机节点复检
+    pub fn down_node_check(&self, host: &String, buf: &DownNodeCheck) -> Result<DownNodeCheckStatus, Box<dyn Error>> {
+        let packet = self.socket_io(host, buf)?;
+        self.response_is_self(&packet)?;
+        let value: DownNodeCheckStatus = serde_json::from_slice(&packet.value)?;
+        return Ok(value);
+    }
+
+    ///
+    /// 发送无数据内容的协议包
+    /// 协议类型为自己
+    ///
+    /// 主要用于无数据内容的协议，并只返回ok、error包
+    ///
+    pub fn send_myself(&self, host: &String) -> Result<(), Box<dyn Error>> {
+        let packet_value = Null::new();
+        let packet = self.socket_io(host, &packet_value)?;
+        return self.response_code_check(&packet);
+    }
+
+    ///
+    /// 发送数据包，只接收返回的OK或者Erro包
+    ///
+    pub fn send_myself_value_packet<T: Serialize>(&self, host: &String, buf: &T) -> Result<(), Box<dyn Error>>{
+        let packet = self.socket_io(host, buf)?;
+        return self.response_code_check(&packet);
+    }
+
+    fn response_is_self(&self, packet: &RecPacket) -> Result<(), Box<dyn Error> >{
+        if packet.type_code.get_code() == self.get_code() {
+            return Ok(());
+        }else {
+            let a = format!("return invalid type code: {:?}",&packet.type_code);
+            info!("{}", &a);
+            return Box::new(Err(a)).unwrap();
+        }
+    }
+
+    fn response_code_check(&self, packet: &RecPacket) -> Result<(), Box<dyn Error>> {
+        match packet.type_code {
+            MyProtocol::Error => {
+                let e: ReponseErr = serde_json::from_slice(&packet.value)?;
+                return Box::new(Err(e.err)).unwrap();
+            }
+            MyProtocol::Ok => {
+                return Ok(());
+            }
+            _ => {
+                let a = format!("return invalid type code: {:?}",&packet.type_code);
+                return  Box::new(Err(a)).unwrap();
+            }
         }
     }
 
@@ -288,15 +358,13 @@ pub struct RecoveryInfo {
 
 impl RecoveryInfo {
     pub fn new(host: String, dbport: usize) -> Result<RecoveryInfo, Box<dyn Error>> {
-        let mut conn = crate::ha::conn(&host)?;
+        let response_packet = MyProtocol::GetRecoveryInfo.get_packet(&host)?;
         let host_info = host.split(":");
         let host_vec = host_info.collect::<Vec<&str>>();
-        send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::GetRecoveryInfo)?;
-        let packet = rec_packet(&mut conn)?;
-        let type_code = MyProtocol::new(&packet[0]);
-        match type_code {
+
+        match response_packet.type_code {
             MyProtocol::GetRecoveryInfo => {
-                let info: GetRecoveryInfo = serde_json::from_slice(&packet[9..])?;
+                let info: GetRecoveryInfo = serde_json::from_slice(&response_packet.value)?;
                 return Ok(RecoveryInfo{
                     binlog: info.binlog,
                     position: info.position,
@@ -306,7 +374,7 @@ impl RecoveryInfo {
                 });
             }
             _ => {
-                let a = format!("return invalid type code: {}",&packet[0]);
+                let a = format!("return invalid type code: {:?}",&response_packet.type_code);
                 return  Box::new(Err(a)).unwrap();
             }
         }
@@ -442,36 +510,3 @@ impl HostInfoValueGetAllState {
     }
 }
 
-
-
-fn header(code: u8, payload: u64) -> Vec<u8> {
-    let mut buf: Vec<u8> = vec![];
-    buf.push(code);
-    let payload = crate::readvalue::write_u64(payload);
-    buf.extend(payload);
-    return buf;
-}
-
-pub fn send_value_packet<T: Serialize>(mut tcp: &TcpStream, value: &T, type_code: MyProtocol) -> Result<(), Box<dyn Error>> {
-    let value = serde_json::to_string(value)?;
-    let mut buf = header(type_code.get_code(), value.len() as u64);
-    buf.extend(value.as_bytes());
-    tcp.write(buf.as_ref())?;
-    tcp.flush()?;
-    Ok(())
-}
-
-///
-/// 接收client返回的数据
-///
-pub fn rec_packet(conn: &mut TcpStream) -> Result<Vec<u8>, Box<dyn Error>> {
-    let mut buf: Vec<u8> = vec![];
-    let mut header: Vec<u8> = vec![0u8;9];
-    conn.read_exact(&mut header)?;
-    let payload = crate::readvalue::read_u64(&header[1..]);
-    let mut payload_buf: Vec<u8> = vec![0u8; payload as usize];
-    conn.read_exact(&mut payload_buf)?;
-    buf.extend(header);
-    buf.extend(payload_buf);
-    Ok(buf)
-}

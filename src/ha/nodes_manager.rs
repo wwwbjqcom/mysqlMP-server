@@ -6,15 +6,14 @@
 use actix_web::{web};
 use std::sync::{mpsc, Arc, Mutex};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
-use crate::ha::{DownNodeInfo, conn, get_node_state_from_host};
+use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, rec_packet, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, send_value_packet, HostInfoValueGetAllState, ReponseErr, RowsSql};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, ReponseErr, RowsSql};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 use crate::storage::opdb::HaChangeLog;
-use std::net::TcpStream;
 
 ///
 ///用于检查状态
@@ -276,14 +275,14 @@ impl ElectionMaster {
                     if slave.new_master {
                         info!("send to new master:{}....",&slave.host);
                         self.ha_log.new_master_binlog_info = slave.clone();
-                        if let Err(e) = self.exec_change(&slave.host, MyProtocol::SetMaster, &procotol::Null::new()){
+                        if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host){
                             self.ha_log.save(db)?;
                             return Err(e);
                         };
                         info!("OK");
                     }else {
                         info!("send change master info to slave node: {}....", &slave.host);
-                        if let Err(e) = self.exec_change(&slave.host, MyProtocol::ChangeMaster, &change_master_info){
+                        if let Err(e) = MyProtocol::ChangeMaster.change_master(&slave.host, &change_master_info){
                             self.ha_log.save(db)?;
                             return Err(e);
                         };
@@ -332,57 +331,9 @@ impl ElectionMaster {
                 info!("get from host : {}", &node.host);
                 self.ha_log.recovery_info = RecoveryInfo::new(node.host.clone(), node.dbport.clone())?;
                 info!("Ok");
-//                let mut conn = crate::ha::conn(&node.host)?;
-//                let host_info = node.host.split(":");
-//                let host_vec = host_info.collect::<Vec<&str>>();
-//                //let mut buf: Vec<u8> = vec![];
-//                //buf.push(0xf3);
-//                //send_packet(&buf, &mut conn)?;
-//                send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::GetRecoveryInfo)?;
-//                let packet = rec_packet(&mut conn)?;
-//                let type_code = MyProtocol::new(&packet[0]);
-//                match type_code {
-//                    MyProtocol::GetRecoveryInfo => {
-//                        let value: GetRecoveryInfo = serde_json::from_slice(&packet[9..])?;
-//                        self.ha_log.recovery_info = RecoveryInfo::new(value, host_vec[0].to_string(), node.dbport.clone());
-//                        return Ok(());
-//                    }
-//                    _ => {
-//                        let a = format!("return invalid type code: {}",&packet[0]);
-//                        return  Box::new(Err(a)).unwrap();
-//                    }
-//                }
             }
         }
         Ok(())
-    }
-
-    ///
-    /// 对slave执行change或setmaster操作
-    ///
-    fn exec_change<T: Serialize>(&self, host: &String, type_code: MyProtocol, value: &T) -> Result<(), Box<dyn Error>> {
-        let mut conn = crate::ha::conn(host)?;
-        //let mut buf: Vec<u8> = vec![];
-        //buf.push(type_code.get_code());
-        //send_packet(&buf, &mut conn)?;
-        send_value_packet(&mut conn, value, type_code)?;
-        let packet = rec_packet(&mut conn)?;
-        let type_code = MyProtocol::new(&packet[0]);
-        match type_code {
-            MyProtocol::Ok => {
-                info!("{} change Ok", host);
-                return Ok(());
-            }
-            MyProtocol::Error => {
-                let a = format!("{}: {:?}",host, serde_json::from_slice(&packet[9..])?);
-                info!("{}",a);
-                return Box::new(Err(a)).unwrap();
-            }
-            _ => {
-                let a = format!("return invalid type code: {}",&packet[0]);
-                return  Box::new(Err(a)).unwrap();
-            }
-        }
     }
 
     fn is_master(&self, db: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>> {
@@ -396,30 +347,16 @@ impl ElectionMaster {
     }
 }
 
-
-
-
 ///
 /// 分发每个node检查宕机节点状态
 ///
 fn get_down_state_from_node(host_info: &String,
                             down_node: &procotol::DownNodeCheck,
                             sender: Arc<Mutex<mpsc::Sender<DownNodeCheckStatus>>>) {
-    let mut conn = conn(host_info).unwrap();
-    procotol::send_value_packet(&mut conn, down_node, MyProtocol::DownNodeCheck).unwrap();
-    let packet = rec_packet(&mut conn).unwrap();
-    let type_code = MyProtocol::new(&packet[0]);
-    match type_code {
-        MyProtocol::DownNodeCheck => {
-            let value: DownNodeCheckStatus = serde_json::from_slice(&packet[9..]).unwrap();
-            info!("{}: {:?}",host_info,value);
-            sender.lock().unwrap().send(value).unwrap();
-        }
-        _ => {
-            info!("return invalid type code: {}",&packet[0]);
-        }
-    }
-
+    if let Ok(value) = MyProtocol::DownNodeCheck.down_node_check(host_info, down_node){
+        info!("{}: {:?}",host_info,value);
+        sender.lock().unwrap().send(value).unwrap();
+    };
 }
 
 ///
@@ -531,12 +468,13 @@ impl SwitchForNodes {
     /// 对当前master进行read only设置，关闭写入直到slave延迟为0
     ///
     fn set_master_variables(&self) -> Result<(), Box<dyn Error>> {
-        let mut conn = conn(&self.old_master_info.host)?;
-        procotol::send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetVariables)?;
-        if let Err(e) = self.rec_info(&mut conn){
-            let a = format!("set old master {} variables error: {}",&self.old_master_info.host,e);
-            return Box::new(Err(a)).unwrap();
-        };
+        MyProtocol::SetVariables.send_myself(&self.old_master_info.host)?;
+//        let mut conn = conn(&self.old_master_info.host)?;
+//        procotol::send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetVariables)?;
+//        if let Err(e) = self.rec_info(&mut conn){
+//            let a = format!("set old master {} variables error: {}",&self.old_master_info.host,e);
+//            return Box::new(Err(a)).unwrap();
+//        };
         Ok(())
     }
 
@@ -560,7 +498,7 @@ impl SwitchForNodes {
     fn run_switch(&mut self) -> Result<(), Box<dyn Error>> {
         let mut err_host = vec![];
         for slave in &self.slave_nodes_info {
-            if let Err(e) = self.run_change_to_node(slave){
+            if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&slave.host, &self.repl_info){
                 info!("host: {}, change error: {}",&slave.host, e.to_string());
                 err_host.push(slave.host.clone());
             };
@@ -571,41 +509,26 @@ impl SwitchForNodes {
         }
 
         //切换旧master为slave
-        if let Err(e) = self.run_change_to_node(&self.old_master_info){
+        if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&self.old_master_info.host, &self.repl_info){
             let err = format!("switch failed host list : {:?} {:?}", err_host, e.to_string());
             return Box::new(Err(err)).unwrap();
         }
 
-        let mut conn = conn(&self.host)?;
-        send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::SetMaster)?;
-        self.rec_info(&mut conn)?;
+        MyProtocol::SetMaster.send_myself(&self.host)?;
         return Ok(());
     }
 
-    fn run_change_to_node(&self, node: &HostInfoValueGetAllState) -> Result<(), Box<dyn Error>> {
-        let mut conn = conn(&node.host)?;
-        send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
-        self.rec_info(&mut conn)?;
-        Ok(())
-    }
+//    fn run_change_to_node(&self, node: &HostInfoValueGetAllState) -> Result<(), Box<dyn Error>> {
+//        let mut conn = conn(&node.host)?;
+//        send_value_packet(&mut conn, &self.repl_info, MyProtocol::RecoveryCluster)?;
+//        self.rec_info(&mut conn)?;
+//        Ok(())
+//    }
 
     ///
     /// 切换失败恢复master状态
     ///
     fn recovery_variables(&self) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
-    fn rec_info(&self, conn: &mut TcpStream) -> Result<(), Box<dyn Error>> {
-        let packet = rec_packet(conn)?;
-        let type_code = MyProtocol::new(&packet[0]);
-        match type_code {
-            MyProtocol::Error => {
-                let err: procotol::ReponseErr = serde_json::from_slice(&packet[9..])?;
-                return  Box::new(Err(err.err)).unwrap();
-            }
-            _ =>{}
-        }
         Ok(())
     }
 
