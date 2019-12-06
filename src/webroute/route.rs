@@ -6,7 +6,7 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use crate::storage;
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
-use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, ReponseErr};
+use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
 use std::error::Error;
 use crate::ha::nodes_manager::SwitchForNodes;
 use crate::storage::opdb::HaChangeLog;
@@ -124,7 +124,7 @@ pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Form<EditInfo>) -> HttpRes
             return response(a);
         }
         Err(e) => {
-            return ReponseErr::new(e.to_string());
+            return HttpReponseErr::new(e.to_string());
         }
     }
 }
@@ -149,7 +149,7 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
             return response(a);
         }
         Err(e) => {
-            return ReponseErr::new(e.to_string());
+            return HttpReponseErr::new(e.to_string());
         }
     }
 }
@@ -170,11 +170,11 @@ impl DeleteNode {
                     return response(data.delete(&self.host, &cf_name));
                 }else {
                     let err = String::from("the maintenance mode node is only deleted");
-                    return ReponseErr::new(err);
+                    return HttpReponseErr::new(err);
                 }
             }
             Err(e) => {
-                return ReponseErr::new(e.to_string());
+                return HttpReponseErr::new(e.to_string());
             }
         }
     }
@@ -204,7 +204,7 @@ fn response(a: Result<(), Box<dyn Error>>) -> HttpResponse {
             return State::new();
         },
         Err(e) => {
-            return ReponseErr::new(e.to_string());
+            return HttpReponseErr::new(e.to_string());
         }
     }
 }
@@ -257,10 +257,29 @@ pub fn switchlog(data: web::Data<DbInfo>) -> HttpResponse {
 
     let mut switch_log = SwitchLog::new();
     if let Err(e) = switch_log.get_all(&data) {
-        return ReponseErr::new(e.to_string());
+        return HttpReponseErr::new(e.to_string());
     }
     return response_value(&switch_log);
 }
 
+
+///
+/// 错误信息
+///
+#[derive(Serialize, Deserialize)]
+pub struct HttpReponseErr{
+    pub status: u8,
+    pub err: String
+}
+
+impl HttpReponseErr {
+    pub fn new(err: String) -> HttpResponse {
+        HttpResponse::Ok()
+            .json(HttpReponseErr {
+                status: 0,
+                err
+            })
+    }
+}
 
 

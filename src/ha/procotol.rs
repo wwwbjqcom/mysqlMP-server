@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::net::TcpStream;
 use std::error::Error;
 use std::io::{Read, Write};
-use actix_web::{web, HttpResponse};
+use actix_web::{web};
 use crate::webroute::route::{EditInfo, EditMainTain};
 
 #[derive(Debug, Serialize)]
@@ -258,19 +258,9 @@ impl Null {
 ///
 #[derive(Serialize, Deserialize)]
 pub struct ReponseErr{
-    pub status: u8,
     pub err: String
 }
 
-impl ReponseErr {
-    pub fn new(err: String) -> HttpResponse {
-        HttpResponse::Ok()
-            .json(ReponseErr {
-                status: 0,
-                err
-            })
-    }
-}
 ///
 /// client回复服务端状态检查的包
 ///
