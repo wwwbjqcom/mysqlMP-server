@@ -421,6 +421,7 @@ pub struct SwitchForNodes {
     pub old_master_info: HostInfoValueGetAllState,
     pub slave_nodes_info: Vec<HostInfoValueGetAllState>,
     pub repl_info: ChangeMasterInfo,
+    pub success_slave_host: Vec<String>,
 }
 
 impl SwitchForNodes {
@@ -440,7 +441,8 @@ impl SwitchForNodes {
             },
 
             slave_nodes_info: vec![],
-            repl_info: ChangeMasterInfo{ master_host: "".to_string(), master_port: 0 }
+            repl_info: ChangeMasterInfo{ master_host: "".to_string(), master_port: 0 },
+            success_slave_host: vec![]
         }
     }
 
@@ -454,7 +456,10 @@ impl SwitchForNodes {
         self.get_all_nodes_for_cluster_name(&db, &cf_name)?;
         self.set_master_variables()?;
         self.get_repl_info()?;
-        self.run_switch()?;
+        if let Err(e) = self.run_switch(){
+            info!("switch error: {}", e.to_string());
+            self.rollback_switch()?;
+        };
         info!("Ok");
         Ok(())
     }
@@ -516,37 +521,33 @@ impl SwitchForNodes {
     }
 
     fn run_switch(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut err_host = vec![];
-        for slave in &self.slave_nodes_info {
-            info!("change {}",&slave.host);
-            if let Err(e) = MyProtocol::ChangeMaster.change_master(&slave.host, &self.repl_info){
-                info!("host: {}, set master error: {}",&slave.host, e.to_string());
-                err_host.push(slave.host.clone());
-            }
-//            if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host) {
-//                info!("host: {}, set master error: {}",&slave.host, e.to_string());
-//                err_host.push(slave.host.clone());
-//                continue;
-//            }
-//            if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&slave.host, &self.repl_info){
-//                info!("host: {}, change error: {}",&slave.host, e.to_string());
-//                err_host.push(slave.host.clone());
-//            };
-        }
-        if err_host.len() > 0 {
-            let err = format!("switch failed host list : {:?}", err_host);
-            return Err(err.into());
-        }
-
+        self.switch_slave()?;
         //切换旧master为slave
         info!("change old master {}", &self.old_master_info.host);
-        if let Err(e) = MyProtocol::ChangeMaster.change_master(&self.old_master_info.host, &self.repl_info){
-        //if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&self.old_master_info.host, &self.repl_info){
-            let err = format!("switch failed host list : {:?} {:?}", err_host, e.to_string());
-            return Err(err.into());
-        }
+        MyProtocol::ChangeMaster.change_master(&self.old_master_info.host, &self.repl_info)?;
         info!("set master for {}", &self.host);
         MyProtocol::SetMaster.send_myself(&self.host)?;
+        return Ok(());
+
+    }
+
+    fn switch_slave(&mut self) -> Result<(), Box<dyn Error>> {
+        for slave in &self.slave_nodes_info {
+            info!("change {}", &slave.host);
+            MyProtocol::ChangeMaster.change_master(&slave.host, &self.repl_info)?;
+            self.success_slave_host.push(slave.host.clone());
+        }
+        Ok(())
+    }
+
+    fn rollback_switch(&mut self) -> Result<(), Box<dyn Error>> {
+        info!("rollback switch...");
+        info!("rollback old master...");
+        MyProtocol::SetMaster.send_myself(&self.old_master_info.host)?;
+        self.repl_info = ChangeMasterInfo::new(self.old_master_info.host.clone(), self.old_master_info.dbport.clone());
+        self.switch_slave()?;
+        info!("rollback back new master...");
+        MyProtocol::ChangeMaster.change_master(&self.host, &self.repl_info)?;
         return Ok(());
     }
 
