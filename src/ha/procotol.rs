@@ -158,7 +158,7 @@ impl MyProtocol {
             }
             _ => {
                 let a = format!("return invalid type code: {:?}",&packet.type_code);
-                return  Box::new(Err(a)).unwrap();
+                return  Err(a.into());
             }
         }
     }
@@ -375,7 +375,7 @@ impl RecoveryInfo {
             }
             _ => {
                 let a = format!("return invalid type code: {:?}",&response_packet.type_code);
-                return  Box::new(Err(a)).unwrap();
+                return  Err(a.into());
             }
         }
     }
