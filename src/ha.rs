@@ -197,7 +197,7 @@ fn get_node_state_from_host(host_info: &str) -> Result<MysqlState, Box<dyn Error
         }
         _ => {
             let a = format!("return invalid type code: {:?}",&response_packet.type_code);
-            return  Box::new(Err(a)).unwrap();
+            return Err(a.into());
         }
     }
 }

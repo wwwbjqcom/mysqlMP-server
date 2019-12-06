@@ -143,7 +143,7 @@ impl MyProtocol {
         }else {
             let a = format!("return invalid type code: {:?}",&packet.type_code);
             info!("{}", &a);
-            return Box::new(Err(a)).unwrap();
+            return Err(a.into());
         }
     }
 
@@ -151,7 +151,7 @@ impl MyProtocol {
         match packet.type_code {
             MyProtocol::Error => {
                 let e: ReponseErr = serde_json::from_slice(&packet.value)?;
-                return Box::new(Err(e.err)).unwrap();
+                return Err(e.err.into());
             }
             MyProtocol::Ok => {
                 return Ok(());

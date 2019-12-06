@@ -151,7 +151,7 @@ impl RecoveryDownNode {
                 }
                 MyProtocol::Error => {
                     let e: ReponseErr = serde_json::from_slice(&response_value.value)?;
-                    return Box::new(Err(e.err)).unwrap();
+                    return Err(e.err.into());
                 }
                 MyProtocol::Ok => {
                     info!("host: {} recovery success", &self.host);
@@ -473,7 +473,7 @@ impl SwitchForNodes {
             if value.host == self.host {
                 let role = crate::webroute::route::get_nodes_role(db, &row.key);
                 if role == String::from("master"){
-                    let a = format!("do not allow the current master({}) to perform this operation", &value.host);
+                    let a = String::from("do not allow the current master to perform this operation");
                     return  Err(a.into());
                 }
                 continue;
@@ -536,14 +536,14 @@ impl SwitchForNodes {
         }
         if err_host.len() > 0 {
             let err = format!("switch failed host list : {:?}", err_host);
-            return Box::new(Err(err)).unwrap();
+            return Err(err.into());
         }
 
         //切换旧master为slave
         info!("change old master {}", &self.old_master_info.host);
         if let Err(e) = MyProtocol::RecoveryCluster.send_myself_value_packet(&self.old_master_info.host, &self.repl_info){
             let err = format!("switch failed host list : {:?} {:?}", err_host, e.to_string());
-            return Box::new(Err(err)).unwrap();
+            return Err(err.into());
         }
         info!("set master for {}", &self.host);
         MyProtocol::SetMaster.send_myself(&self.host)?;

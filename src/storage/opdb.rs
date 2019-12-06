@@ -25,7 +25,7 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
         Ok(v) => {
             if v.value.len() > 0 {
                 let a = format!("this key: ({}) already exists in the database",key);
-                return Box::new(Err(a)).unwrap();
+                return Err(a.into());
             }
         }
         _ => {}
@@ -49,7 +49,7 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
     match a {
         Ok(()) => Ok(()),
         Err(e) => {
-            return Box::new(Err(e.to_string())).unwrap();
+            return Err(e);
         }
     }
 

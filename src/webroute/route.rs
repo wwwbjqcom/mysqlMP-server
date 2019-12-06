@@ -247,7 +247,7 @@ impl SwitchLog {
                 return Ok(());
             }
             Err(e) => {
-                return Box::new(Err(e.to_string())).unwrap();
+                return Err(e);
             }
         }
     }
