@@ -9,7 +9,7 @@ use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, ReponseErr, RowsSql};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -140,26 +140,10 @@ impl RecoveryDownNode {
 
         if !self.ha_log.recovery_status {
             info!("recovery info: {:?}", self.ha_log.recovery_info);
-            let response_value = MyProtocol::RecoveryCluster.socket_io(&self.host,&self.ha_log.recovery_info)?;
-            match response_value.type_code {
-                MyProtocol::RecoveryValue => {
-                    info!("host: {} recovery success", &self.host);
-                    self.update_state(db)?;
-                    let v: RowsSql = serde_json::from_slice(&response_value.value)?;
-                    info!("{:?}", &v);
-                    //执行修改路由
-                }
-                MyProtocol::Error => {
-                    let e: ReponseErr = serde_json::from_slice(&response_value.value)?;
-                    return Err(e.err.into());
-                }
-                MyProtocol::Ok => {
-                    info!("host: {} recovery success", &self.host);
-                    self.update_state(db)?;
-                    //执行修改路由
-                }
-                _ => {info!("return invalid type code:{:?}", &response_value.type_code);}
-            }
+            let row_sql = MyProtocol::RecoveryCluster.recovery(&self.host, &self.ha_log.recovery_info)?;
+            info!("{:?}", row_sql);
+            self.update_state(db)?;
+            //宕机恢复完成
             return Ok(())
         }
 
@@ -457,8 +441,9 @@ impl SwitchForNodes {
         self.set_master_variables()?;
         self.get_repl_info()?;
         if let Err(e) = self.run_switch(){
-            info!("switch error: {}", e.to_string());
+            info!("switch error: {}", &e.to_string());
             self.rollback_switch()?;
+            return Err(e);
         };
         info!("Ok");
         Ok(())

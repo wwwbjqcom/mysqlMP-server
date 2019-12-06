@@ -118,6 +118,31 @@ impl MyProtocol {
     }
 
     ///
+    /// 宕机恢复
+    pub fn recovery(&self, host: &String, buf: &RecoveryInfo) -> Result<RowsSql, Box<dyn Error>> {
+        let packet = self.socket_io(host, buf)?;
+        let mut v = RowsSql{ sqls: vec![], error: "".to_string() };
+        match packet.type_code {
+            MyProtocol::RecoveryValue => {
+                info!("host: {} recovery success", &host);
+                v= serde_json::from_slice(&packet.value)?;
+            }
+            MyProtocol::Error => {
+                let e: ReponseErr = serde_json::from_slice(&packet.value)?;
+                return Err(e.err.into());
+            }
+            MyProtocol::Ok => {
+                info!("host: {} recovery success", &host);
+            }
+            _ => {
+                let a = format!("return invalid type code:{:?}", &packet.type_code);
+                return Err(a.into());
+            }
+        }
+        return Ok(v);
+    }
+
+    ///
     /// 发送无数据内容的协议包
     /// 协议类型为自己
     ///
