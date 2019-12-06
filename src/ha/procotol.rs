@@ -343,6 +343,13 @@ pub struct ChangeMasterInfo{
     pub master_host: String,
     pub master_port: usize
 }
+impl ChangeMasterInfo {
+    pub fn new(host: String, port: usize) -> ChangeMasterInfo {
+        let host_info = host.split(":");
+        let host_vec = host_info.collect::<Vec<&str>>();
+        ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: port }
+    }
+}
 
 ///
 /// 宕机恢复服务端发送恢复主从的基础信息
