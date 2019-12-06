@@ -473,8 +473,8 @@ impl SwitchForNodes {
             if value.host == self.host {
                 let role = crate::webroute::route::get_nodes_role(db, &row.key);
                 if role == String::from("master"){
-                    let a = String::from("do not allow the current master to perform this operation");
-                    return Box::new(Err(a)).unwrap();
+                    let a = format!("do not allow the current master({}) to perform this operation", &value.host);
+                    return Box::new(Err(&a)).unwrap();
                 }
                 continue;
             }
