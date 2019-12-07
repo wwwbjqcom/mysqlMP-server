@@ -327,7 +327,6 @@ impl ElectionMaster {
         for slave in &self.slave_nodes{
             if slave.new_master {
                 info!("send to new master:{}....",&slave.host);
-                self.ha_log.new_master_binlog_info = slave.clone();
                 if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host){
                     self.ha_log.save(db)?;
                     return Err(e);
@@ -366,6 +365,7 @@ impl ElectionMaster {
         let host_vec = host_info.collect::<Vec<&str>>();
         info!("get recovery info from {}", &self.slave_nodes[index].host);
         self.ha_log.recovery_info = RecoveryInfo::new(&self.slave_nodes[index])?;
+        self.ha_log.new_master_binlog_info = self.slave_nodes[index].clone();
         info!("Ok");
         let cm = ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: dbport};
         return Ok(cm);
