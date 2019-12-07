@@ -306,6 +306,7 @@ impl ElectionMaster {
             binlog: self.ha_log.new_master_binlog_info.slave_info.log_name.clone(),
             position: self.ha_log.new_master_binlog_info.slave_info.read_log_pos.clone()
         };
+        info!("pull info: {:?}", &sync_info);
         let binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host, &sync_info)?;
         return Ok(binlog);
     }

@@ -384,7 +384,7 @@ pub struct SetMasterStatus {
 ///
 /// 服务端通过该协议请求client查询差异biogln
 ///
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SyncBinlogInfo{
     pub binlog: String,
     pub position: usize
