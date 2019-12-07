@@ -87,7 +87,9 @@ impl HaChangeLog {
                 position: 0,
                 gtid: "".to_string(),
                 masterhost: "".to_string(),
-                masterport: 0
+                masterport: 0,
+                read_binlog: "".to_string(),
+                read_position: 0
             },
             recovery_status: false,
             switch_status: false

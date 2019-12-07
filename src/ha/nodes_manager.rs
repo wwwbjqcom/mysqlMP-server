@@ -9,7 +9,7 @@ use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -271,42 +271,80 @@ impl ElectionMaster {
         info!("{:?}", self.check_state);
         if self.check_state.db_down {
             // mysql实例宕机
-            //if self.check_state.client_down {
+            let change_master_info = self.elc_new_master()?;
+            info!("election master info : {:?}",change_master_info);
+            info!("{:?}", self.slave_nodes);
+            if self.check_state.client_down {
                 //直接切换
-                let change_master_info = self.elc_new_master();
-                info!("election master info : {:?}",change_master_info);
-                info!("{:?}", self.slave_nodes);
-                for slave in &self.slave_nodes{
-                    if slave.new_master {
-                        info!("send to new master:{}....",&slave.host);
-                        self.ha_log.new_master_binlog_info = slave.clone();
-                        if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host){
-                            self.ha_log.save(db)?;
-                            return Err(e);
-                        };
-                        info!("OK");
-                    }else {
-                        info!("send change master info to slave node: {}....", &slave.host);
-                        if let Err(e) = MyProtocol::ChangeMaster.change_master(&slave.host, &change_master_info){
-                            self.ha_log.save(db)?;
-                            return Err(e);
-                        };
-                        info!("OK");
-                    }
-                }
-            //}else {
+                self.execute_switch_master(db, &change_master_info)?;
+            }else {
                 //client在线、判断是否有需要追加的数据
-
-            //}
+                let binlog_value = self.pull_downnode_binlog()?;
+                self.push_downnode_binlog_to(&binlog_value)?;
+                self.reacquire_recovery_info()?;
+                self.execute_switch_master(db, &change_master_info)?;
+            }
         }
-        self.get_recovery_info()?;
+        Ok(())
+    }
+
+    fn push_downnode_binlog_to(&self, buf: &BinlogValue) -> Result<(), Box<dyn Error>> {
+        if buf.value.len() > 0 {
+            info!("append binlog....");
+            let rowsql = MyProtocol::PushBinlog.push_binlog(&self.ha_log.new_master_binlog_info.host, buf)?;
+            info!("{:?}", rowsql);
+            //执行数据保存
+            return Ok(())
+        }
+        info!("no binlog content");
+        return Ok(());
+    }
+
+    fn pull_downnode_binlog(&self) -> Result<BinlogValue, Box<dyn Error>> {
+        info!("pull difference binlog from {}", &self.down_node_info.host);
+        let binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host)?;
+        return Ok(binlog);
+    }
+
+    ///
+    /// 获取recovery_info，用于追加binlog之后
+    fn reacquire_recovery_info(&mut self) -> Result<(), Box<dyn Error>> {
+        for node in &self.slave_nodes{
+            if node.new_master{
+                self.ha_log.recovery_info = RecoveryInfo::new(node)?;
+                self.ha_log.recovery_info.read_binlog = "".to_string();
+                self.ha_log.recovery_info.read_position = 0;
+            }
+        }
+        Ok(())
+    }
+
+    fn execute_switch_master(&mut self, db: &web::Data<DbInfo>, change_info: &ChangeMasterInfo) -> Result<(), Box<dyn Error>> {
+        for slave in &self.slave_nodes{
+            if slave.new_master {
+                info!("send to new master:{}....",&slave.host);
+                self.ha_log.new_master_binlog_info = slave.clone();
+                if let Err(e) = MyProtocol::SetMaster.send_myself(&slave.host){
+                    self.ha_log.save(db)?;
+                    return Err(e);
+                };
+                info!("OK");
+            }else {
+                info!("send change master info to slave node: {}....", &slave.host);
+                if let Err(e) = MyProtocol::ChangeMaster.change_master(&slave.host, change_info){
+                    self.ha_log.save(db)?;
+                    return Err(e);
+                };
+                info!("OK");
+            }
+        }
         Ok(())
     }
 
     ///
     /// 通过read_binlog信息选举新master
     /// 
-    fn elc_new_master(&mut self) -> ChangeMasterInfo{
+    fn elc_new_master(&mut self) -> Result<ChangeMasterInfo, Box<dyn Error>>{
         info!("election new master node.....");
         let mut index: usize = 0;
         let mut read_binlog_pos: usize = 0;
@@ -322,23 +360,11 @@ impl ElectionMaster {
         let host_info = self.slave_nodes[index].host.clone();
         let host_info = host_info.split(":");
         let host_vec = host_info.collect::<Vec<&str>>();
+        info!("get recovery info from {}", &self.slave_nodes[index].host);
+        self.ha_log.recovery_info = RecoveryInfo::new(&self.slave_nodes[index])?;
+        info!("Ok");
         let cm = ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: dbport};
-        return cm;
-    }
-
-    ///
-    /// 从新master获取读取的binlog信息以及gtid信息
-    /// 
-    fn get_recovery_info(&mut self) -> Result<(), Box<dyn Error>> {
-        info!("get recovery info from");
-        for node in &self.slave_nodes {
-            if node.new_master {
-                info!("get from host : {}", &node.host);
-                self.ha_log.recovery_info = RecoveryInfo::new(node.host.clone(), node.dbport.clone())?;
-                info!("Ok");
-            }
-        }
-        Ok(())
+        return Ok(cm);
     }
 
     fn is_master(&mut self, db: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>> {
@@ -535,14 +561,6 @@ impl SwitchForNodes {
         MyProtocol::ChangeMaster.change_master(&self.host, &self.repl_info)?;
         return Ok(());
     }
-
-    ///
-    /// 切换失败恢复master状态
-    ///
-    fn recovery_variables(&self) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-
 }
 
 

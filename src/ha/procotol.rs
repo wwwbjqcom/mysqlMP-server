@@ -9,6 +9,7 @@ use std::error::Error;
 use std::io::{Read, Write};
 use actix_web::{web};
 use crate::webroute::route::{EditInfo, EditMainTain};
+use crate::ha::nodes_manager::SlaveInfo;
 
 #[derive(Debug, Serialize)]
 pub enum  MyProtocol {
@@ -18,7 +19,8 @@ pub enum  MyProtocol {
     GetAuditLog,
     SetMaster,          //设置本机为新master
     ChangeMaster,
-    SyncBinlog,         //mysql服务宕机，同步差异binlog到新master
+    PullBinlog,         //mysql服务宕机，拉取宕机节点差异binlog
+    PushBinlog,         //推送需要追加的数据到新master
     RecoveryCluster,    //宕机重启(主动切换)自动恢复主从同步, 如有差异将回滚本机数据，并保存回滚数据
     GetRecoveryInfo,    //从新master获取宕机恢复同步需要的信息
     RecoveryValue,      //宕机恢复回滚的数据，回给服务端保存，有管理员人工决定是否追加
@@ -45,7 +47,7 @@ impl MyProtocol {
         }else if code == &0xf9 {
             return MyProtocol::ChangeMaster;
         }else if code == &0xf8 {
-            return MyProtocol::SyncBinlog;
+            return MyProtocol::PullBinlog;
         }else if code == &0xf7 {
             return MyProtocol::RecoveryCluster;
         }else if code == &0x00 {
@@ -64,6 +66,8 @@ impl MyProtocol {
             return MyProtocol::SetVariables;
         }else if code == &0x03 {
             return MyProtocol::RecoveryVariables;
+        }else if code == &0xf2 {
+            return MyProtocol::PushBinlog;
         }
         else {
             return MyProtocol::UnKnow;
@@ -78,7 +82,8 @@ impl MyProtocol {
             MyProtocol::GetAuditLog => 0xfb,
             MyProtocol::SetMaster => 0xfa,
             MyProtocol::ChangeMaster => 0xf9,
-            MyProtocol::SyncBinlog => 0xf8,
+            MyProtocol::PullBinlog => 0xf8,
+            MyProtocol::PushBinlog => 0xf2,
             MyProtocol::RecoveryCluster => 0xf7,
             MyProtocol::Ok => 0x00,
             MyProtocol::Error => 0x09,
@@ -89,6 +94,49 @@ impl MyProtocol {
             MyProtocol::SetVariables => 0x04,
             MyProtocol::RecoveryVariables => 0x03,
             MyProtocol::UnKnow => 0xff
+        }
+    }
+
+    ///
+    /// 推送差异binlog到新master
+    ///
+    /// 返回sql事务数据
+    ///
+    pub fn push_binlog(&self, host: &String, buf: &BinlogValue) -> Result<RowsSql, Box<dyn Error>> {
+        let packet = self.socket_io(host, buf)?;
+        match packet.type_code {
+            MyProtocol::RecoveryValue => {
+                let value: RowsSql = serde_json::from_slice(&packet.value)?;
+                return Ok(value);
+            }
+            MyProtocol::Error => {
+                let err: ReponseErr = serde_json::from_slice(&packet.value)?;
+                return Err(err.err.into());
+            }
+            _ => {
+                let a = format!("return invalid type code:{:?}", &packet.type_code);
+                return Err(a.into());
+            }
+        }
+    }
+
+    ///
+    /// 拉取差异binlog数据
+    pub fn pull_binlog(&self, host: &String) -> Result<BinlogValue, Box<dyn Error>> {
+        let packet = self.get_packet(host)?;
+        match packet.type_code {
+            MyProtocol::PullBinlog => {
+                let value: BinlogValue = serde_json::from_slice(&packet.value)?;
+                return Ok(value);
+            }
+            MyProtocol::Error => {
+                let err: ReponseErr = serde_json::from_slice(&packet.value)?;
+                return Err(err.err.into());
+            }
+            _ => {
+                let a = format!("return invalid type code:{:?}", &packet.type_code);
+                return Err(a.into());
+            }
         }
     }
 
@@ -342,13 +390,11 @@ pub struct SyncBinlogInfo{
     position: usize
 }
 ///
-/// mysql实例宕机client发送所有差异的binlog原始数据
-///
-/// 仅用于client之间传递
+/// mysql实例宕机client所有差异的binlog原始数据
 ///
 #[derive(Serialize, Deserialize)]
 pub struct BinlogValue{
-    value: Vec<u8>
+    pub value: Vec<u8>
 }
 ///
 /// 主从切换，指向到新master的基础信息
@@ -376,12 +422,15 @@ pub struct RecoveryInfo {
     pub gtid: String,
     pub masterhost: String,
     pub masterport: usize,
+    pub read_binlog: String,
+    pub read_position: usize,
 }
 
 impl RecoveryInfo {
-    pub fn new(host: String, dbport: usize) -> Result<RecoveryInfo, Box<dyn Error>> {
-        let response_packet = MyProtocol::GetRecoveryInfo.get_packet(&host)?;
-        let host_info = host.split(":");
+    pub fn new(node_info: &SlaveInfo) -> Result<RecoveryInfo, Box<dyn Error>> {
+        let response_packet = MyProtocol::GetRecoveryInfo.get_packet(&node_info.host)?;
+        let host_info = node_info.host.clone();
+        let host_info = host_info.split(":");
         let host_vec = host_info.collect::<Vec<&str>>();
 
         match response_packet.type_code {
@@ -392,7 +441,9 @@ impl RecoveryInfo {
                     position: info.position,
                     gtid: info.gtid,
                     masterhost: host_vec[0].to_string(),
-                    masterport: dbport
+                    masterport: node_info.dbport.clone(),
+                    read_binlog: node_info.slave_info.log_name.clone(),
+                    read_position: node_info.slave_info.read_log_pos.clone()
                 });
             }
             _ => {
