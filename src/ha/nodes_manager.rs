@@ -72,13 +72,13 @@ impl CheckState {
         return Ok(true);
     }
 
-    fn is_db_down(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
+    fn is_client_down(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
-            return Ok(true);
+            return Ok(false);
         }
-        return Ok(false);
+        return Ok(true);
     }
 }
 
@@ -100,15 +100,15 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }else {
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
-            if let Ok(f) = state.is_db_down(&db, &r.host) {
-                info!("{}", f);
-                if !f {
+            if let Ok(f) = state.is_client_down(&db, &r.host) {
+                if f {
                     info!("node: {} client, delete status now...", &r.host);
                     state.delete_from_db(&db, &r.host);
                     info!("Ok");
                     continue;
                 }
             }
+
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
                     info!("slave node: {}, delete status now...", &r.host);
@@ -283,6 +283,7 @@ impl ElectionMaster {
             info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
             return Ok(());
         }
+        self.check_state.update_db(&db, &self.down_node_info.host)?;
         info!("{:?}", self.check_state);
         if self.check_state.db_down {
             // mysql实例宕机
@@ -399,7 +400,6 @@ impl ElectionMaster {
             }
         };
         self.check_state.role = "slave".to_string();
-        self.check_state.update_db(&db, &self.down_node_info.host)?;
         return Ok(false);
     }
 }
