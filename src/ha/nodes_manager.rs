@@ -100,14 +100,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }else {
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
-            if let Ok(f) = state.is_client_down(&db, &r.host) {
-                if f {
-                    info!("node: {} client, delete status now...", &r.host);
-                    state.delete_from_db(&db, &r.host);
-                    info!("Ok");
-                    continue;
-                }
-            }
 
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
@@ -117,6 +109,16 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                     continue;
                 }
             }
+
+            if let Ok(f) = state.is_client_down(&db, &r.host) {
+                if f {
+                    info!("node: {} client, delete status now...", &r.host);
+                    state.delete_from_db(&db, &r.host);
+                    info!("Ok");
+                    continue;
+                }
+            }
+
             info!("start recovery...");
             let mut reco = RecoveryDownNode::new(r.host.clone());
             if let Err(e) = reco.recovery(&db){
