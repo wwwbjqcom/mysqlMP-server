@@ -101,6 +101,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
             if let Ok(f) = state.is_db_down(&db, &r.host) {
+                info!("{}", f);
                 if !f {
                     info!("node: {} client, delete status now...", &r.host);
                     state.delete_from_db(&db, &r.host);
