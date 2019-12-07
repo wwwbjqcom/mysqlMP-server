@@ -56,9 +56,10 @@ impl CheckState {
         Ok(())
     }
 
-    fn delete_from_db(&self, db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
-        db.delete(key, &CfNameTypeCode::CheckState.get())?;
-        Ok(())
+    fn delete_from_db(&self, db: &web::Data<DbInfo>, key: &String) {
+        if let Err(e) = db.delete(key, &CfNameTypeCode::CheckState.get()){
+            info!("{:?}",e.to_string());
+        };
     }
 
     fn is_slave(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
@@ -69,6 +70,15 @@ impl CheckState {
             return Ok(false);
         }
         return Ok(true);
+    }
+
+    fn is_db_down(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
+        let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
+        let value: CheckState = serde_json::from_str(&result.value)?;
+        if value.db_down {
+            return Ok(true);
+        }
+        return Ok(false);
     }
 }
 
@@ -90,12 +100,18 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }else {
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
+            if let Ok(f) = state.is_db_down(&db, &r.host) {
+                if !f {
+                    info!("node: {} client, delete status now...", &r.host);
+                    state.delete_from_db(&db, &r.host);
+                    info!("Ok");
+                    continue;
+                }
+            }
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
                     info!("slave node: {}, delete status now...", &r.host);
-                    if let Err(e) = state.delete_from_db(&db, &r.host){
-                        info!("{:?}",e.to_string());
-                    };
+                    state.delete_from_db(&db, &r.host);
                     info!("Ok");
                     continue;
                 }
@@ -107,9 +123,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                 continue;
             }
             info!("node: {} recovery success, delete status now...", r.host);
-            if let Err(e) = state.delete_from_db(&db, &r.host){
-                info!("{:?}",e.to_string());
-            };
+            state.delete_from_db(&db, &r.host);
             info!("Ok");
         }
     }
@@ -302,12 +316,15 @@ impl ElectionMaster {
 
     fn pull_downnode_binlog(&self) -> Result<BinlogValue, Box<dyn Error>> {
         info!("pull difference binlog from {}", &self.down_node_info.host);
+        let mut binlog = BinlogValue{ value: vec![] };
         let sync_info = SyncBinlogInfo{
             binlog: self.ha_log.new_master_binlog_info.slave_info.log_name.clone(),
             position: self.ha_log.new_master_binlog_info.slave_info.read_log_pos.clone()
         };
-        info!("pull info: {:?}", &sync_info);
-        let binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host, &sync_info)?;
+        if sync_info.binlog.len() > 0 {
+            info!("pull info: {:?}", &sync_info);
+            binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host, &sync_info)?;
+        }
         return Ok(binlog);
     }
 
