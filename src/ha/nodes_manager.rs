@@ -9,7 +9,7 @@ use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo};
 use std::thread;
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -302,7 +302,11 @@ impl ElectionMaster {
 
     fn pull_downnode_binlog(&self) -> Result<BinlogValue, Box<dyn Error>> {
         info!("pull difference binlog from {}", &self.down_node_info.host);
-        let binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host)?;
+        let sync_info = SyncBinlogInfo{
+            binlog: self.ha_log.new_master_binlog_info.slave_info.log_name.clone(),
+            position: self.ha_log.new_master_binlog_info.slave_info.read_log_pos.clone()
+        };
+        let binlog = MyProtocol::PullBinlog.pull_binlog(&self.down_node_info.host, &sync_info)?;
         return Ok(binlog);
     }
 

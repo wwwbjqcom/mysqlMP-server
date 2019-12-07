@@ -122,8 +122,8 @@ impl MyProtocol {
 
     ///
     /// 拉取差异binlog数据
-    pub fn pull_binlog(&self, host: &String) -> Result<BinlogValue, Box<dyn Error>> {
-        let packet = self.get_packet(host)?;
+    pub fn pull_binlog(&self, host: &String, info: &SyncBinlogInfo) -> Result<BinlogValue, Box<dyn Error>> {
+        let packet = self.socket_io(host, info)?;
         match packet.type_code {
             MyProtocol::PullBinlog => {
                 let value: BinlogValue = serde_json::from_slice(&packet.value)?;
@@ -386,8 +386,8 @@ pub struct SetMasterStatus {
 ///
 #[derive(Deserialize, Serialize)]
 pub struct SyncBinlogInfo{
-    binlog: String,
-    position: usize
+    pub binlog: String,
+    pub position: usize
 }
 ///
 /// mysql实例宕机client所有差异的binlog原始数据
