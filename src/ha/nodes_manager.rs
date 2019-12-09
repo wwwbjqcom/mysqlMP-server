@@ -233,7 +233,9 @@ impl ElectionMaster {
     }
 
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        self.check_downnode_status(db)?;
+        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
+        self.get_slave_nodes(db, &result)?;
+        self.check_downnode_status(&result)?;
         self.change(db)?;
         self.ha_log.recovery_status = false;
         self.ha_log.switch_status = true;
@@ -245,27 +247,19 @@ impl ElectionMaster {
     /// 检查宕机节点状态
     ///
     /// 如果db_down为true将复检三次以判断是否为网络故障
-    fn check_downnode_status(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
+    fn check_downnode_status(&mut self, result: &Vec<KeyValue>) -> Result<(), Box<dyn Error>> {
         'out: for _i in 0..3 {
             let (rt, rc) = mpsc::channel();
             let rt= Arc::new(Mutex::new(rt));
             let mut count = 0 as usize;
-            'insid01: for nodes in &result {
+            'insid01: for nodes in result {
                 if nodes.key != self.down_node_info.host {
                     let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
                     if !state.online {
                         continue 'insid01;
                     }
+                    if state.rtype == "route"{ continue 'insid01;}
 
-                    if state.rtype == "route"{
-                        continue 'insid01;
-                    }
-
-                    if state.cluster_name == self.cluster_name {
-                        let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
-                        self.slave_nodes.push(s);
-                    }
                     count += 1;
                     let my_rt = Arc::clone(&rt);
                     let my_down_node = self.down_node_info.clone();
@@ -296,6 +290,32 @@ impl ElectionMaster {
         }
         Ok(())
     }
+
+    ///
+    /// 获取可以做选举的slave节点信息
+    ///
+    /// 宕机及维护状态节点不能做为候选
+    fn get_slave_nodes(&mut self, db: &web::Data<DbInfo>, result: &Vec<KeyValue>) -> Result<(), Box<dyn Error>> {
+        for nodes in result{
+            let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
+            if nodes.key != self.down_node_info.host{
+                if !state.online {
+                    continue;
+                }
+                if let Err(_e) = check_mainatain(db, &nodes.key){
+                    continue;
+                };
+
+                if state.cluster_name == self.cluster_name {
+                    let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
+                    self.slave_nodes.push(s);
+                }
+            }
+        }
+        info!("{:?}", &self.slave_nodes);
+        Ok(())
+    }
+
 
     ///
     /// 执行切换操作
@@ -531,25 +551,11 @@ impl SwitchForNodes {
             let err = format!("host {} not online", &self.host);
             return Err(err.into());
         }
-        self.check_mainatain(db, &self.host)?;
+        check_mainatain(db, &self.host)?;
         let role = crate::webroute::route::get_nodes_role(db, &self.host);
         if role == String::from("master"){
             let a = String::from("do not allow the current master to perform this operation");
             return  Err(a.into());
-        }
-        Ok(())
-    }
-
-    ///
-    /// 检查节点是否为维护模式
-    ///
-    /// 只要集群中有存在维护模式的将无法执行切换操作
-    fn check_mainatain(&self, db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
-        let result = db.get(key, &CfNameTypeCode::HaNodesInfo.get())?;
-        let node_state: HostInfoValue = serde_json::from_str(&result.value)?;
-        if node_state.maintain {
-            let err = format!("host {} is mainatain mode", key);
-            return Err(err.into());
         }
         Ok(())
     }
@@ -565,7 +571,7 @@ impl SwitchForNodes {
             if value.cluster_name == self.cluster_name {
                 let role = crate::webroute::route::get_nodes_role(db, &row.key);
                 let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role.clone());
-                self.check_mainatain(db, &v.host)?;
+                check_mainatain(db, &v.host)?;
                 if role == String::from("master"){
                     self.old_master_info = v;
                 }else {
@@ -637,6 +643,21 @@ impl SwitchForNodes {
     }
 }
 
+
+
+///
+/// 检查节点是否为维护模式
+///
+/// 只要集群中有存在维护模式的将无法执行切换操作
+fn check_mainatain(db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
+    let result = db.get(key, &CfNameTypeCode::HaNodesInfo.get())?;
+    let node_state: HostInfoValue = serde_json::from_str(&result.value)?;
+    if node_state.maintain {
+        let err = format!("host {} is mainatain mode", key);
+        return Err(err.into());
+    }
+    Ok(())
+}
 
 
 
