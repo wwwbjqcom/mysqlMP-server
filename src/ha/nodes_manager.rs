@@ -95,6 +95,9 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             let down_node = procotol::DownNodeCheck::new(r.host, r.dbport);
             let mut elc = ElectionMaster::new(r.cluster_name.clone(), down_node);
             if let Err(e) = elc.election(&db){
+                if let Err(er) = elc.ha_log.save(&db){
+                    info!("{}", er.to_string());
+                };
                 info!("{}", e.to_string());
             };
         }else {
