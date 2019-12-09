@@ -274,6 +274,7 @@ impl ElectionMaster {
                 let state = rc.recv_timeout(Duration::new(5,5));
                 match state {
                     Ok(s) => {
+                        info!("{:?}", DownNodeCheckStatus);
                         self.check_state.check(&s);
                     }
                     Err(e) => {
@@ -345,6 +346,8 @@ impl ElectionMaster {
                 self.reacquire_recovery_info()?;
                 self.execute_switch_master(db, &change_master_info)?;
             }
+        }else if self.check_state.client_down {
+            info!("host {} client is down, please check")
         }
         Ok(())
     }
@@ -456,7 +459,7 @@ fn get_down_state_from_node(host_info: &String,
                             down_node: &procotol::DownNodeCheck,
                             sender: Arc<Mutex<mpsc::Sender<DownNodeCheckStatus>>>) {
     if let Ok(value) = MyProtocol::DownNodeCheck.down_node_check(host_info, down_node){
-        info!("{}: {:?}",host_info,value);
+        //info!("{}: {:?}",host_info,value);
         sender.lock().unwrap().send(value).unwrap();
     };
 }
