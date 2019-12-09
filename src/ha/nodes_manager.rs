@@ -508,6 +508,7 @@ impl SwitchForNodes {
         for row in result {
             let value: HostInfoValue = serde_json::from_str(&row.value)?;
             if value.maintain{continue;};
+            if !value.online{continue;};
             if value.host == self.host {
                 let role = crate::webroute::route::get_nodes_role(db, &row.key);
                 if role == String::from("master"){
