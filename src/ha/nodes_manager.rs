@@ -10,7 +10,7 @@ use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
 use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo};
-use std::thread;
+use std::{thread, time};
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 use crate::storage::opdb::HaChangeLog;
@@ -134,6 +134,8 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }
     }
 }
+
+
 ///
 /// 宕机节点恢复
 ///
@@ -231,52 +233,67 @@ impl ElectionMaster {
     }
 
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
-        let (rt, rc) = mpsc::channel();
-        let rt= Arc::new(Mutex::new(rt));
-        let mut count = 0 as usize;
-        for nodes in result {
-            if nodes.key != self.down_node_info.host {
-                let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
-                if !state.online {
-                    continue;
-                }
-
-                if state.rtype == "route"{
-                    continue;
-                }
-
-                if state.cluster_name == self.cluster_name {
-                    let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
-                    self.slave_nodes.push(s);
-                }
-                count += 1;
-                let my_rt = Arc::clone(&rt);
-                let my_down_node = self.down_node_info.clone();
-                thread::spawn(move||{
-                    get_down_state_from_node(&state.host, &my_down_node, my_rt);
-                });
-            }
-        }
-
-        self.check_state = CheckState::new(count);
-        for _i in 0..count {
-            let state = rc.recv_timeout(Duration::new(2,5));
-            match state {
-                Ok(s) => {
-                    self.check_state.check(&s);
-                }
-                Err(e) => {
-                    info!("host {} check error: {:}", &self.down_node_info.host, e.to_string());
-                    self.check_state.all_nodes -= 1;
-                    continue;
-                }
-            }
-        }
+        self.check_downnode_status(db)?;
         self.change(db)?;
         self.ha_log.recovery_status = false;
         self.ha_log.switch_status = true;
         self.ha_log.save(db)?;
+        Ok(())
+    }
+
+    ///
+    /// 检查宕机节点状态
+    ///
+    /// 如果db_down为true将复检三次以判断是否为网络故障
+    fn check_downnode_status(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
+        let (rt, rc) = mpsc::channel();
+        let rt= Arc::new(Mutex::new(rt));
+        let mut count = 0 as usize;
+        'out: for _i in 0..3 {
+            'insid01: for nodes in &result {
+                if nodes.key != self.down_node_info.host {
+                    let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
+                    if !state.online {
+                        continue 'insid01;
+                    }
+
+                    if state.rtype == "route"{
+                        continue 'insid01;
+                    }
+
+                    if state.cluster_name == self.cluster_name {
+                        let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
+                        self.slave_nodes.push(s);
+                    }
+                    count += 1;
+                    let my_rt = Arc::clone(&rt);
+                    let my_down_node = self.down_node_info.clone();
+                    thread::spawn(move||{
+                        get_down_state_from_node(&state.host, &my_down_node, my_rt);
+                    });
+                }
+            }
+
+            self.check_state = CheckState::new(count);
+            'insid02: for _i in 0..count {
+                let state = rc.recv_timeout(Duration::new(2,5));
+                match state {
+                    Ok(s) => {
+                        self.check_state.check(&s);
+                    }
+                    Err(e) => {
+                        info!("host {} check error: {:}", &self.down_node_info.host, e.to_string());
+                        self.check_state.all_nodes -= 1;
+                        continue 'insid02;
+                    }
+                }
+            }
+            if !self.check_state.db_down {
+                return Ok(());
+            }
+            thread::sleep(time::Duration::from_secs(1));
+        }
         Ok(())
     }
 
@@ -531,7 +548,7 @@ impl SwitchForNodes {
         let result = db.get(key, &CfNameTypeCode::HaNodesInfo.get())?;
         let node_state: HostInfoValue = serde_json::from_str(&result.value)?;
         if node_state.maintain {
-            let err = format!("host {} is mainatain", key);
+            let err = format!("host {} is mainatain mode", key);
             return Err(err.into());
         }
         Ok(())
@@ -543,11 +560,6 @@ impl SwitchForNodes {
             let value: HostInfoValue = serde_json::from_str(&row.value)?;
             if !value.online{continue;};
             if value.host == self.host {
-//                let role = crate::webroute::route::get_nodes_role(db, &row.key);
-//                if role == String::from("master"){
-//                    let a = String::from("do not allow the current master to perform this operation");
-//                    return  Err(a.into());
-//                }
                 continue;
             }
             if value.cluster_name == self.cluster_name {
