@@ -277,7 +277,7 @@ impl ElectionMaster {
 
             self.check_state = CheckState::new(count);
             'insid02: for _i in 0..count {
-                let state = rc.recv_timeout(Duration::new(2,5));
+                let state = rc.recv_timeout(Duration::new(3,5));
                 match state {
                     Ok(s) => {
                         self.check_state.check(&s);
