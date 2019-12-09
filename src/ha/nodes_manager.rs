@@ -104,10 +104,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
 
-            if let Err(e) = state.is_slave(&db, &r.host){
-                info!("{:?}", e.to_string());
-            };
-
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
                     info!("slave node: {}, delete status now...", &r.host);
@@ -495,7 +491,8 @@ impl SwitchForNodes {
         let node_info: HostInfoValue = serde_json::from_str(&node_info.value)?;
         self.cluster_name = node_info.cluster_name;
         self.dbport = node_info.dbport;
-        self.get_all_nodes_for_cluster_name(&db, &cf_name)?;
+        self.check_host_status(db)?;
+        self.get_all_nodes_for_cluster_name(db, &cf_name)?;
         self.set_master_variables()?;
         self.get_repl_info()?;
         if let Err(e) = self.run_switch(){
@@ -507,6 +504,39 @@ impl SwitchForNodes {
         Ok(())
     }
 
+    ///
+    /// 检查节点状态是否能提升为master
+    ///
+    fn check_host_status(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let result = db.get(&self.host, &CfNameTypeCode::HaNodesInfo.get())?;
+        let node_state: HostInfoValue = serde_json::from_str(&result.value)?;
+        if !node_state.online {
+            let err = format!("host {} not online", &self.host);
+            return Err(err.into());
+        }
+        self.check_mainatain(db, &self.host)?;
+        let role = crate::webroute::route::get_nodes_role(db, &self.host);
+        if role == String::from("master"){
+            let a = String::from("do not allow the current master to perform this operation");
+            return  Err(a.into());
+        }
+        Ok(())
+    }
+
+    ///
+    /// 检查节点是否为维护模式
+    ///
+    /// 只要集群中有存在维护模式的将无法执行切换操作
+    fn check_mainatain(&self, db: &web::Data<DbInfo>, key: &String) -> Result<(), Box<dyn Error>> {
+        let result = db.get(key, &CfNameTypeCode::HaNodesInfo.get())?;
+        let node_state: HostInfoValue = serde_json::from_str(&result.value)?;
+        if node_state.maintain {
+            let err = format!("host {} is mainatain", key);
+            return Err(err.into());
+        }
+        Ok(())
+    }
+
     fn get_all_nodes_for_cluster_name(&mut self, db: &web::Data<DbInfo>, cf_name: &String) -> Result<(), Box<dyn Error>> {
         let result = db.iterator(cf_name,&String::from(""))?;
         for row in result {
@@ -514,16 +544,17 @@ impl SwitchForNodes {
             if value.maintain{continue;};
             if !value.online{continue;};
             if value.host == self.host {
-                let role = crate::webroute::route::get_nodes_role(db, &row.key);
-                if role == String::from("master"){
-                    let a = String::from("do not allow the current master to perform this operation");
-                    return  Err(a.into());
-                }
+//                let role = crate::webroute::route::get_nodes_role(db, &row.key);
+//                if role == String::from("master"){
+//                    let a = String::from("do not allow the current master to perform this operation");
+//                    return  Err(a.into());
+//                }
                 continue;
             }
             if value.cluster_name == self.cluster_name {
                 let role = crate::webroute::route::get_nodes_role(db, &row.key);
                 let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role.clone());
+                self.check_mainatain(db, &v.host)?;
                 if role == String::from("master"){
                     self.old_master_info = v;
                 }else {
@@ -572,7 +603,6 @@ impl SwitchForNodes {
         info!("set master for {}", &self.host);
         MyProtocol::SetMaster.send_myself(&self.host)?;
         return Ok(());
-
     }
 
     fn switch_slave(&mut self) -> Result<(), Box<dyn Error>> {
