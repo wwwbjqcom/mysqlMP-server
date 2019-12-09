@@ -104,6 +104,10 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
 
+            if let Err(e) = state.is_slave(&db, &r.host){
+                info!("{:?}", e.to_string());
+            };
+
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
                     info!("slave node: {}, delete status now...", &r.host);
