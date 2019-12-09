@@ -63,7 +63,7 @@ impl CheckState {
     }
 
     fn is_slave(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
-        let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
+        let result = db.get(key, &CfNameTypeCode::NodesState.get())?;
         let value: CheckState = serde_json::from_str(&result.value)?;
         info!("{:?}", &value);
         if value.role == "master".to_string(){
@@ -103,10 +103,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
         }else {
             info!("host: {} is running...", &r.host);
             let state = CheckState::new(0);
-
-            if let Err(e) = state.is_slave(&db, &r.host){
-                info!("{:?}", e.to_string());
-            };
 
             if let Ok(f) = state.is_slave(&db, &r.host){
                 if f{
