@@ -111,7 +111,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                     info!("Ok");
                     continue;
                 }
-            }
+            };
 
             if let Ok(f) = state.is_client_down(&db, &r.host) {
                 if f {
@@ -120,7 +120,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
                     info!("Ok");
                     continue;
                 }
-            }
+            };
 
             info!("start recovery...");
             let mut reco = RecoveryDownNode::new(r.host.clone());
