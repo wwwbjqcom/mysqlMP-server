@@ -64,7 +64,7 @@ impl CheckState {
 
     fn is_slave(&self, db: &web::Data<DbInfo>, key: &String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::NodesState.get())?;
-        let value: CheckState = serde_json::from_str(&result.value)?;
+        let value: MysqlState = serde_json::from_str(&result.value)?;
         info!("{:?}", &value);
         if value.role == "master".to_string(){
             return Ok(false);
