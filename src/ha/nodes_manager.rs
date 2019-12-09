@@ -247,10 +247,10 @@ impl ElectionMaster {
     /// 如果db_down为true将复检三次以判断是否为网络故障
     fn check_downnode_status(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
-        let (rt, rc) = mpsc::channel();
-        let rt= Arc::new(Mutex::new(rt));
-        let mut count = 0 as usize;
         'out: for _i in 0..3 {
+            let (rt, rc) = mpsc::channel();
+            let rt= Arc::new(Mutex::new(rt));
+            let mut count = 0 as usize;
             'insid01: for nodes in &result {
                 if nodes.key != self.down_node_info.host {
                     let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
@@ -277,7 +277,7 @@ impl ElectionMaster {
 
             self.check_state = CheckState::new(count);
             'insid02: for _i in 0..count {
-                let state = rc.recv_timeout(Duration::new(3,5));
+                let state = rc.recv_timeout(Duration::new(2,5));
                 match state {
                     Ok(s) => {
                         self.check_state.check(&s);
