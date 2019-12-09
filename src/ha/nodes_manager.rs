@@ -271,7 +271,7 @@ impl ElectionMaster {
 
             self.check_state = CheckState::new(count);
             'insid02: for _i in 0..count {
-                let state = rc.recv_timeout(Duration::new(2,5));
+                let state = rc.recv_timeout(Duration::new(5,5));
                 match state {
                     Ok(s) => {
                         self.check_state.check(&s);
@@ -283,8 +283,11 @@ impl ElectionMaster {
                     }
                 }
             }
-            if !self.check_state.db_down {
-                return Ok(());
+            if self.check_state.all_nodes > 0 {
+                if !self.check_state.db_down {
+                    info!("db is not down");
+                    return Ok(());
+                }
             }
             thread::sleep(time::Duration::from_secs(1));
         }
