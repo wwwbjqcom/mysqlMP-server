@@ -480,7 +480,8 @@ pub struct TractionValue{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RowsSql {
     pub sqls: Vec<TractionValue>,
-    pub error: String
+    pub error: String,
+    pub etype: String,          //返回节点执行sql的类型， rollback或者append
 }
 
 
