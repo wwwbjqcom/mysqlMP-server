@@ -169,7 +169,7 @@ impl MyProtocol {
     /// 宕机恢复
     pub fn recovery(&self, host: &String, buf: &RecoveryInfo) -> Result<RowsSql, Box<dyn Error>> {
         let packet = self.socket_io(host, buf)?;
-        let mut v = RowsSql{ sqls: vec![], error: "".to_string() };
+        let mut v = RowsSql{ sqls: vec![], error: "".to_string(), etype: "".to_string() };
         match packet.type_code {
             MyProtocol::RecoveryValue => {
                 info!("host: {} recovery success", &host);

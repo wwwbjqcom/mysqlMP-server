@@ -274,7 +274,7 @@ impl ElectionMaster {
                 let state = rc.recv_timeout(Duration::new(5,5));
                 match state {
                     Ok(s) => {
-                        info!("{:?}", DownNodeCheckStatus);
+                        info!("{:?}", &s);
                         self.check_state.check(&s);
                     }
                     Err(e) => {
@@ -347,7 +347,7 @@ impl ElectionMaster {
                 self.execute_switch_master(db, &change_master_info)?;
             }
         }else if self.check_state.client_down {
-            info!("host {} client is down, please check")
+            info!("host {} client is down, please check", &self.down_node_info.host);
         }
         Ok(())
     }
