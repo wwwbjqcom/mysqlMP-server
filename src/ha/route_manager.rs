@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 
 ///
 /// 每个mysql实例ip及端口信息
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MysqlHostInfo {
     pub host: String,
     pub port: usize
