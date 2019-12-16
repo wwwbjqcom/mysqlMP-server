@@ -11,7 +11,7 @@ pub fn main() {
 //    let mut db_info = DbInfo::new();
 //    db_info.init_db();
     let db = DbInfo::new();
-
+    db.init_admin_user().unwrap();
     mymha::start_web(db);
 
 //    let cf_name = String::from("Nodes_state");

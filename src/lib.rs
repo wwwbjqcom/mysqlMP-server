@@ -173,6 +173,12 @@ pub fn start_web(db: DbInfo) {
                     .to(webroute::index_file),
             )
             .service(
+                web::resource("/login.html")
+                    .name("login") // <- set resource name, then it could be used in `url_for`
+                    .guard(guard::Get())
+                    .to(webroute::login),
+            )
+            .service(
                 web::resource("/routeinfo")
                     .route(
                         web::route()
@@ -182,9 +188,12 @@ pub fn start_web(db: DbInfo) {
                     )
             )
             .route("/", web::get().to(webroute::index))
-            .route("/login", web::post().to(webroute::index))
+            .route("/login", web::post().to(webroute::route::login))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
+            .route("/pages/DBHA/getuserinfo", web::post().to(webroute::route::get_user_info))
+            .route("/pages/logs/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/routeinfo", web::post().to(webroute::route::get_route_info))
+            .route("/pages/DBHA/routeinfo", web::post().to(webroute::route::get_all_route_info))
             .route("/createuser", web::post().to(webroute::route::create_user))
             .route("/edituser", web::post().to(webroute::route::edit_user))
             .route("/pages/DBHA/import", web::post().to(webroute::route::import_mysql_info))

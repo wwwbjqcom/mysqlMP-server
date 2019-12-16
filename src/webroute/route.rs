@@ -317,6 +317,21 @@ pub struct GetRouteInfo {
 }
 
 impl GetRouteInfo {
+    pub fn getall(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
+        let mut res_route = ResponseRouteInfo{route: vec![]};
+        let result = db.prefix_iterator(&PrefixTypeCode::RouteInfo.prefix(), &CfNameTypeCode::SystemData.get())?;
+        for kv in result {
+            if !kv.key.starts_with(&PrefixTypeCode::RouteInfo.prefix()){
+                continue;
+            }
+            if kv.value.len() > 0{
+                let value: RouteInfo = serde_json::from_str(&kv.value)?;
+                res_route.route.push(value);
+            }
+        }
+        Ok(res_route)
+    }
+
     pub fn get(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
         self.check_user_info(db)?;
         let mut res_route = ResponseRouteInfo{route: vec![]};
@@ -345,6 +360,19 @@ impl GetRouteInfo {
 pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> HttpResponse {
     let info = GetRouteInfo{hook_id: info.hook_id.clone(), clusters: info.clusters.clone()};
     let v = info.get(&db);
+    match v {
+        Ok(rinfo) => {
+            return response_value(&rinfo);
+        }
+        Err(e) => {
+            return HttpReponseErr::new(e.to_string());
+        }
+    }
+}
+
+pub fn get_all_route_info(db: web::Data<DbInfo>) -> HttpResponse {
+    let info = GetRouteInfo{ hook_id: "".to_string(), clusters: vec![] };
+    let v = info.getall(&db);
     match v {
         Ok(rinfo) => {
             return response_value(&rinfo);
@@ -426,6 +454,28 @@ pub fn login(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>, session: Sess
     }
 }
 
+#[derive(Serialize)]
+pub struct GetUserInfo{
+    pub user_name: String,
+    pub hook_id: String,
+    pub create_time: i64,
+    pub update_time: i64,
+    pub status: u8
+}
+
+impl GetUserInfo {
+    fn new(user_info: &UserInfo) -> GetUserInfo {
+        GetUserInfo{
+            user_name : user_info.user_name.clone(),
+            hook_id : user_info.hook_id.clone(),
+            create_time: user_info.create_time.clone(),
+            update_time: user_info.update_time.clone(),
+            status: 1
+        }
+
+    }
+}
+
 ///
 /// 获取用户信息
 pub fn get_user_info(db: web::Data<DbInfo>, session: Session) -> actix_web::Result<HttpResponse> {
@@ -434,7 +484,8 @@ pub fn get_user_info(db: web::Data<DbInfo>, session: Session) -> actix_web::Resu
         match result {
             Ok(result) => {
                 let value: UserInfo = serde_json::from_str(&result.value)?;
-                return Ok(response_value(&value));
+                let get_info = GetUserInfo::new(&value);
+                return Ok(response_value(&get_info));
             }
             Err(e) => {
                 return Ok(HttpReponseErr::new(e.to_string()));

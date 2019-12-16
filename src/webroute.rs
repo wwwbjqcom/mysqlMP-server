@@ -27,9 +27,9 @@ pub fn index(req: HttpRequest, session: Session) -> Result<HttpResponse> {
 }
 
 pub fn index_static(req: HttpRequest, session: Session) -> Result<NamedFile> {
-    if !session_check(session).unwrap(){
-        return login();
-    }
+//    if !session_check(session).unwrap(){
+//        return login();
+//    }
     let path: PathBuf = req.match_info().query("filename").parse().unwrap();
     Ok(NamedFile::open(path)?)
 }

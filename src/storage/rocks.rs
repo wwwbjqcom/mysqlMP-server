@@ -7,6 +7,8 @@ use rocksdb::{DB, Options, DBCompactionStyle};
 use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
+use crate::storage::opdb::UserInfo;
+use crate::webroute::route::PostUserInfo;
 
 
 pub enum PrefixTypeCode {
@@ -210,6 +212,18 @@ impl DbInfo {
         let a = format!("no cloumnfamily {}", cf_name);
         return  Box::new(Err(a)).unwrap();
 
+    }
+
+    pub fn init_admin_user(&self) -> Result<(), Box<dyn Error>> {
+        let user_name = "admin".to_string();
+        let password = "admin".to_string();
+        let userinfo = UserInfo::new(&PostUserInfo{ user_name, password });
+        let result = self.prefix_get(&PrefixTypeCode::UserInfo, &userinfo.user_name)?;
+        if result.value.len() > 0 {
+            return Ok(())
+        }
+        self.prefix_put(&PrefixTypeCode::UserInfo, &userinfo.user_name, &userinfo)?;
+        Ok(())
     }
 }
 
