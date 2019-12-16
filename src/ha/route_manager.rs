@@ -45,6 +45,7 @@ impl RouteInfo {
 
     fn set_master_info(&mut self, node: &NodeInfo) {
         let host = self.split_str(node.value.host.clone());
+        info!("host:{}",&host);
         self.master = MysqlHostInfo{ host, port: node.value.dbport.clone() };
     }
 
@@ -149,6 +150,7 @@ impl ClusterNodeInfo {
                 continue;
             };
             self.slave_check(&node, &cur_state, db, &mut route_info)?;
+            info!("{:?}", route_info);
         }
         Ok(route_info)
     }
@@ -251,7 +253,7 @@ pub fn manager(db: web::Data<DbInfo>) {
         if crate::timestamp() - start_time >= 10000 {
             //每10秒获取一次rocksdb中节点信息
             all_node = AllNode::new(&db).unwrap();
-            //info!("node list: {:?}",nodes_info);
+            info!("node list: {:?}",all_node);
             start_time = crate::timestamp();
         }
         all_node.route_manager(&db);
