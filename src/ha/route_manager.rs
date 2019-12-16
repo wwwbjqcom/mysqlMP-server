@@ -45,7 +45,6 @@ impl RouteInfo {
 
     fn set_master_info(&mut self, node: &NodeInfo) {
         let host = self.split_str(node.value.host.clone());
-        info!("host:{}",&host);
         self.master = MysqlHostInfo{ host, port: node.value.dbport.clone() };
     }
 
