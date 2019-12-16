@@ -167,8 +167,9 @@ impl ClusterNodeInfo {
                     route_info.set_master_info(node);
                 };
             }
+            Ok(true)
         }
-        Ok(true)
+        Ok(false)
     }
 
     ///
@@ -254,7 +255,7 @@ pub fn manager(db: web::Data<DbInfo>) {
         if crate::timestamp() - start_time >= 10000 {
             //每10秒获取一次rocksdb中节点信息
             all_node = AllNode::new(&db).unwrap();
-            info!("node list: {:?}",all_node);
+            //info!("node list: {:?}",all_node);
             start_time = crate::timestamp();
         }
         all_node.route_manager(&db);
