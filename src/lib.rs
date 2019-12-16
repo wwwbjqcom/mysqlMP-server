@@ -182,8 +182,8 @@ pub fn start_web(db: DbInfo) {
                 web::resource("/routeinfo")
                     .route(
                         web::route()
-                            .guard(guard::Get())
-                            .guard(guard::Header("content-type", "text/plain"))
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
                             .to(webroute::route::get_route_info)
                     )
             )
@@ -192,7 +192,6 @@ pub fn start_web(db: DbInfo) {
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/pages/DBHA/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/pages/logs/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/routeinfo", web::post().to(webroute::route::get_route_info))
             .route("/pages/DBHA/routeinfo", web::post().to(webroute::route::get_all_route_info))
             .route("/createuser", web::post().to(webroute::route::create_user))
             .route("/edituser", web::post().to(webroute::route::edit_user))
