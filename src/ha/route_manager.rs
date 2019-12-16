@@ -22,7 +22,7 @@ pub struct MysqlHostInfo {
 ///
 /// 集群路由信息
 ///
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RouteInfo {
     pub cluster_name: String,
     pub master: MysqlHostInfo,
@@ -196,6 +196,7 @@ impl ClusterNodeInfo {
 
 ///
 /// 所有节点信息
+#[derive(Debug)]
 struct AllNode {
     nodes: Vec<ClusterNodeInfo>
 }
