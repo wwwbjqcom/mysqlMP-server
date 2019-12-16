@@ -25,15 +25,15 @@ pub struct MysqlHostInfo {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RouteInfo {
     pub cluster_name: String,
-    pub master: MysqlHostInfo,
-    pub slave: Vec<MysqlHostInfo>
+    pub write: MysqlHostInfo,
+    pub read: Vec<MysqlHostInfo>
 }
 impl RouteInfo {
     pub fn new(cluster_name: String) -> RouteInfo {
         RouteInfo{
             cluster_name,
-            master: MysqlHostInfo { host: "".to_string(), port: 0 },
-            slave: vec![]
+            write: MysqlHostInfo { host: "".to_string(), port: 0 },
+            read: vec![]
         }
     }
 
@@ -45,12 +45,12 @@ impl RouteInfo {
 
     fn set_master_info(&mut self, node: &NodeInfo) {
         let host = self.split_str(node.value.host.clone());
-        self.master = MysqlHostInfo{ host, port: node.value.dbport.clone() };
+        self.write = MysqlHostInfo{ host, port: node.value.dbport.clone() };
     }
 
     fn set_slave_info(&mut self, node: &NodeInfo) {
         let host = self.split_str(node.value.host.clone());
-        self.slave.push(MysqlHostInfo{host, port: node.value.dbport.clone()});
+        self.read.push(MysqlHostInfo{host, port: node.value.dbport.clone()});
     }
 
     ///
