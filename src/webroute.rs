@@ -26,7 +26,7 @@ pub fn index(req: HttpRequest, session: Session) -> Result<HttpResponse> {
         .finish())
 }
 
-pub fn index_static(req: HttpRequest, session: Session) -> Result<NamedFile> {
+pub fn index_static(req: HttpRequest, _session: Session) -> Result<NamedFile> {
 //    if !session_check(session).unwrap(){
 //        return login();
 //    }

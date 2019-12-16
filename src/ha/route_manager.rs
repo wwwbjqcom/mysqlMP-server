@@ -143,6 +143,7 @@ impl ClusterNodeInfo {
         let mut route_info = RouteInfo::new(self.cluster_name.clone());
         for node in &self.node_list{
             let status = db.get(&node.key, &CfNameTypeCode::NodesState.get())?;
+            info!("{:?}", status);
             let cur_state: MysqlState = serde_json::from_str(&status.value)?;
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
                 continue;
