@@ -26,6 +26,7 @@ pub enum  MyProtocol {
     RecoveryValue,      //宕机恢复回滚的数据，回给服务端保存，有管理员人工决定是否追加
     ReplicationStatus,  //获取slave同步状态
     DownNodeCheck,      //宕机节点状态检查，用于server端检测到宕机时，分发到各client复检
+    Ping,               //存活检查
     SetVariables,
     RecoveryVariables,
     Ok,
@@ -68,6 +69,8 @@ impl MyProtocol {
             return MyProtocol::RecoveryVariables;
         }else if code == &0xf2 {
             return MyProtocol::PushBinlog;
+        }else if code == &0x01 {
+            return MyProtocol::Ping;
         }
         else {
             return MyProtocol::UnKnow;
@@ -93,6 +96,7 @@ impl MyProtocol {
             MyProtocol::GetRecoveryInfo => 0xf3,
             MyProtocol::SetVariables => 0x04,
             MyProtocol::RecoveryVariables => 0x03,
+            MyProtocol::Ping => 0x01,
             MyProtocol::UnKnow => 0xff
         }
     }

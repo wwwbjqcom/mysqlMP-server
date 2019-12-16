@@ -9,6 +9,29 @@ use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
 
 
+pub enum PrefixTypeCode {
+    RouteInfo,              //保存集群路由信息的前缀
+    RollBackSql,            //保存回滚sql信息的前缀
+    UserInfo,               //用户信息
+}
+
+impl PrefixTypeCode {
+    pub fn prefix(&self) -> String {
+        let prefix = "crcp".to_string();
+        match self {
+            PrefixTypeCode::RouteInfo => {
+                format!("{}{}",0x01, &prefix)
+            }
+            PrefixTypeCode::RollBackSql => {
+                format!("{}{}",0x02, &prefix)
+            }
+            PrefixTypeCode::UserInfo => {
+                format!("{}{}",0x03, &prefix)
+            }
+        }
+    }
+}
+
 pub enum CfNameTypeCode {
     HaNodesInfo,            //保存节点基础数据
     RollbackSqlInfo,        //保存宕机切换产生的回滚数据
@@ -144,7 +167,6 @@ impl DbInfo {
     pub fn prefix_iterator(&self, prefix: &String, cf_name: &String) -> Result<Vec<KeyValue>, Box<dyn Error>> {
         self.check_cf(cf_name)?;
         if let Some(cf) = self.db.cf_handle(cf_name) {
-            //let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(prefix.len());
             let iter = self.db.prefix_iterator_cf(cf,prefix)?;
             let mut values: Vec<KeyValue> = vec![];
             for (k, v) in iter {
@@ -157,6 +179,23 @@ impl DbInfo {
         }
         let a = format!("no cloumnfamily {}", cf_name);
         return  Box::new(Err(a)).unwrap();
+    }
+
+    pub fn prefix_put<T: Serialize>(&self, prefix_type: &PrefixTypeCode, key: &String, value: &T) -> Result<(), Box<dyn Error>> {
+        let key = format!("{}:{}", prefix_type.prefix(), key);
+        let value = serde_json::to_string(value)?;
+        let kv = KeyValue{ key, value};
+        self.put(&kv, &CfNameTypeCode::SystemData.get())?;
+        Ok(())
+    }
+
+    pub fn prefix_get(&self, prefix_type: &PrefixTypeCode, key: &String) -> Result<KeyValue, Box<dyn Error>> {
+        let key = format!("{}:{}", prefix_type.prefix(), key);
+        let v = self.get(&key, &CfNameTypeCode::SystemData.get())?;
+        Ok(KeyValue{
+            key,
+            value: v.value
+        })
     }
 
     ///

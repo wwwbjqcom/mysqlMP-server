@@ -12,7 +12,7 @@ use std::time::Duration;
 
 pub mod procotol;
 pub mod nodes_manager;
-pub mod slave_manager;
+pub mod route_manager;
 use actix_web::web;
 use std::sync::{mpsc};
 

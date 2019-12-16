@@ -3,13 +3,15 @@
 @datetime: 2019/11/5
 */
 use actix_web::{web, HttpResponse};
+use actix_session::{ Session};
 use serde::{Deserialize, Serialize};
 use crate::storage;
-use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
 use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
 use std::error::Error;
 use crate::ha::nodes_manager::SwitchForNodes;
-use crate::storage::opdb::HaChangeLog;
+use crate::storage::opdb::{HaChangeLog, UserInfo};
+use crate::ha::route_manager::RouteInfo;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -138,6 +140,14 @@ pub struct EditMainTain{
 pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let key = &info.host;
+    //检查master状态
+    if let Ok(status) = data.get(&key, &CfNameTypeCode::NodesState.get()){
+        let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
+        if cur_status.role == "master".to_string(){
+            return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+        }
+    };
+    //设置模式
     let cur_value = data.get(key, &cf_name);
     match cur_value {
         Ok(v) => {
@@ -280,6 +290,158 @@ impl HttpReponseErr {
                 err
             })
     }
+
+    pub fn no_session() -> HttpResponse {
+        let err = "no seesion, please longin".to_string();
+        HttpResponse::Ok()
+            .json(HttpReponseErr {
+                status: 2,
+                err
+            })
+    }
+}
+
+///
+/// 返回路由信息
+#[derive(Serialize, Deserialize)]
+pub struct ResponseRouteInfo {
+    pub route: Vec<RouteInfo>
+}
+
+///
+/// 获取集群对应路由关系的请求包
+#[derive(Serialize, Deserialize)]
+pub struct GetRouteInfo {
+    pub hook_id: String,
+    pub clusters: Vec<String>,
+}
+
+impl GetRouteInfo {
+    pub fn get(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
+        self.check_user_info(db)?;
+        let mut res_route = ResponseRouteInfo{route: vec![]};
+        for cluster in &self.clusters{
+            let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
+            let value: RouteInfo = serde_json::from_str(&kv.value)?;
+            res_route.route.push(value);
+        }
+        Ok(res_route)
+    }
+    pub fn check_user_info(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let result = db.prefix_iterator(&PrefixTypeCode::UserInfo.prefix(), &CfNameTypeCode::SystemData.get())?;
+        for kv in result{
+            let user_info: UserInfo = serde_json::from_str(&kv.value)?;
+            if user_info.hook_id == self.hook_id {
+                return Ok(());
+            }
+        }
+        let err = format!("invalid hook_id: {}", &self.hook_id);
+        return Err(err.into());
+    }
+}
+
+///
+/// 获取mysql路由信息
+pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> HttpResponse {
+    let info = GetRouteInfo{hook_id: info.hook_id.clone(), clusters: info.clusters.clone()};
+    let v = info.get(&db);
+    match v {
+        Ok(rinfo) => {
+            return response_value(&rinfo);
+        }
+        Err(e) => {
+            return HttpReponseErr::new(e.to_string());
+        }
+    }
+}
+
+
+#[derive(Serialize, Deserialize)]
+pub struct PostUserInfo {
+    pub user_name: String,
+    pub password: String
+}
+
+///
+/// 新建用户
+pub fn create_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> HttpResponse {
+    let result =db.prefix_get(&PrefixTypeCode::UserInfo, &info.user_name);
+    match result {
+        Ok(tmp) => {
+            if tmp.value.len() > 0 {
+                let err = format!("user :{} already exists ", &info.user_name);
+                return HttpReponseErr::new(err);
+            }
+            let user_info = crate::storage::opdb::UserInfo::new(&info);
+            return response(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
+        }
+        Err(e) => {
+            return HttpReponseErr::new(e.to_string());
+        }
+    }
+}
+
+
+///
+/// 编辑用户信息
+pub fn edit_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> HttpResponse {
+    let result =db.prefix_get(&PrefixTypeCode::UserInfo, &info.user_name);
+    match result {
+        Ok(tmp) => {
+            if tmp.value.len() > 0 {
+                let user_info = crate::storage::opdb::UserInfo::new(&info);
+                return response(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
+            }
+            let err = format!("user :{} not exists ", &info.user_name);
+            return HttpReponseErr::new(err);
+        }
+        Err(e) => {
+            return HttpReponseErr::new(e.to_string());
+        }
+    }
+}
+
+
+///
+/// 登陆
+pub fn login(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>, session: Session) -> actix_web::Result<HttpResponse> {
+    let result =db.prefix_get(&PrefixTypeCode::UserInfo, &info.user_name);
+    match result {
+        Ok(result) => {
+            if result.value.len() == 0 {
+                let err = format!("user: {} does not exist", &info.user_name);
+                return Ok(HttpReponseErr::new(err));
+            }
+            let userinfo: UserInfo = serde_json::from_str(&result.value)?;
+            if userinfo.password != info.password {
+                let err = format!("wrong password");
+                return Ok(HttpReponseErr::new(err));
+            }
+            session.set("username", &info.user_name)?;
+            return Ok(State::new());
+        }
+        Err(e) => {
+            return Ok(HttpReponseErr::new(e.to_string()));
+        }
+    }
+}
+
+///
+/// 获取用户信息
+pub fn get_user_info(db: web::Data<DbInfo>, session: Session) -> actix_web::Result<HttpResponse> {
+    if let Some(username) = session.get::<String>("username")? {
+        let result =db.prefix_get(&PrefixTypeCode::UserInfo, &username);
+        match result {
+            Ok(result) => {
+                let value: UserInfo = serde_json::from_str(&result.value)?;
+                return Ok(response_value(&value));
+            }
+            Err(e) => {
+                return Ok(HttpReponseErr::new(e.to_string()));
+            }
+        }
+    }
+    Ok(HttpReponseErr::no_session())
 }
 
 

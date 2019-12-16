@@ -3,12 +3,13 @@
 @datetime: 2019/11/6
 */
 use actix_web::{web};
-use crate::webroute::route::HostInfo;
+use crate::webroute::route::{HostInfo, PostUserInfo};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
 use crate::ha::nodes_manager::SlaveInfo;
 use serde::{Serialize, Deserialize};
+use crate::rand_string;
 
 
 ///
@@ -109,5 +110,30 @@ impl HaChangeLog {
         let row = KeyValue{key: row_key, value};
         db.put(&row, &CfNameTypeCode::HaChangeLog.get())?;
         return Ok(());
+    }
+}
+
+///
+/// 用户信息结构
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UserInfo {
+    pub user_name: String,
+    pub password: String,
+    pub hook_id: String,
+    pub create_time: i64,
+    pub update_time: i64
+}
+
+impl UserInfo {
+    pub fn new(info: &PostUserInfo) -> UserInfo {
+        let create_time = crate::timestamp();
+        let update_time = crate::timestamp();
+        UserInfo{
+            user_name: info.user_name.clone(),
+            password: info.password.clone(),
+            hook_id: rand_string(),
+            create_time,
+            update_time
+        }
     }
 }
