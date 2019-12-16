@@ -167,7 +167,7 @@ impl ClusterNodeInfo {
                     route_info.set_master_info(node);
                 };
             }
-            Ok(true)
+            return Ok(true);
         }
         Ok(false)
     }
