@@ -65,7 +65,7 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
-        //info!("{}:{:?}", key, result);
+        info!("{}:{:?}", key, result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
@@ -158,12 +158,12 @@ impl ClusterNodeInfo {
     fn route_check(&self, db: &web::Data<DbInfo>) -> Result<RouteInfo, Box<dyn Error>> {
         let mut route_info = RouteInfo::new(self.cluster_name.clone());
         for node in &self.node_list{
-            info!("{:?}", node);
+            //info!("{:?}", node);
             let status = db.get(&node.key, &CfNameTypeCode::NodesState.get())?;
-            info!("{:?}", status);
+            //info!("{:?}", status);
             if status.value.len() == 0 {continue;};
             let cur_state: MysqlState = serde_json::from_str(&status.value)?;
-            info!("{:?}", &cur_state);
+            //info!("{:?}", &cur_state);
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
                 continue;
             };
