@@ -70,8 +70,9 @@ impl RouteInfo {
         if value.db_down {
             if role == "master".to_string() {
                 self.check_recovery_status(key, db)?;
+            }else {
+                return Ok(false);
             }
-            return Ok(false);
         }
         return Ok(true);
     }
@@ -88,6 +89,17 @@ impl RouteInfo {
 
         if tmp.len() > 0 {
             tmp.sort_by(|a, b| b.key.cmp(&a.key));
+            let key = tmp[0].key.clone();
+
+            //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
+            let tmp_list = key.split("_");
+            let tmp_list = tmp_list.collect::<Vec<&str>>();
+            let tmp_time: i64 = tmp_list[1].to_string().parse()?;
+            if (crate::timestamp() - tmp_time) > 10000 as i64 {
+                let err = format!("key: {} recovery status unusual", key);
+                return Err(err.into());
+            }
+            //
             let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
             //info!("{:?}", value);
             if value.switch_status{
@@ -165,7 +177,7 @@ impl ClusterNodeInfo {
             if node_status.online {
                 route_info.set_master_info(node);
                 return Ok(true);
-            }else if !node_status.online {
+            }else {
                 if route_info.check_down_status(&node.key, db, "master".to_string())?{
                     route_info.set_master_info(node);
                     return Ok(true);
