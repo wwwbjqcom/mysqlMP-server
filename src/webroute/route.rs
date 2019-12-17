@@ -145,7 +145,9 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
         if status.value.len() > 0 {
             let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
             if cur_status.role == "master".to_string(){
-                return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+                if cur_status.online{
+                    return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+                }
             }
         }
     };
@@ -153,10 +155,10 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
     let cur_value = data.get(key, &cf_name);
     match cur_value {
         Ok(v) => {
-            info!("{:?}", &v);
+            //info!("{:?}", &v);
             let mut db_value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
             db_value.maintain(&info);
-            info!("{:?}", &db_value);
+            //info!("{:?}", &db_value);
             let value = serde_json::to_string(&db_value).unwrap();
             let row = KeyValue::new(&key, &value);
             let a = data.put(&row, &cf_name);
