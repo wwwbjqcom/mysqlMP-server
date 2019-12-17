@@ -142,10 +142,11 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
     let key = &info.host;
     //检查master状态
     if let Ok(status) = data.get(&key, &CfNameTypeCode::NodesState.get()){
-        info!("{:?}", &status);
-        let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
-        if cur_status.role == "master".to_string(){
-            return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+        if status.value.len() > 0 {
+            let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
+            if cur_status.role == "master".to_string(){
+                return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+            }
         }
     };
     //设置模式
