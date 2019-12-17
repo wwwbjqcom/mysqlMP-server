@@ -160,7 +160,7 @@ impl ClusterNodeInfo {
             let status = db.get(&node.key, &CfNameTypeCode::NodesState.get())?;
             if status.value.len() == 0 {continue;};
             let cur_state: MysqlState = serde_json::from_str(&status.value)?;
-            info!("{:?}", &cur_state);
+            info!("{:?}:{:?}", &node.key,&cur_state);
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
                 continue;
             };
