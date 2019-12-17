@@ -160,6 +160,7 @@ impl ClusterNodeInfo {
     /// 对role为master的节点进行判断， 如果为online直接写入信息，如果宕机则需要检查宕机检查数据是否为实例宕机，如果为实例宕机则需要检查是否已经切换
     /// 因为在实例或者client宕机时则不会更新检查状态，所以宕机之前为master如果未恢复则会一直为master状态
     fn master_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<bool, Box<dyn Error>> {
+        info!("{:?}", node_status);
         if node_status.role == "master".to_string() {
             if node_status.online {
                 route_info.set_master_info(node);
