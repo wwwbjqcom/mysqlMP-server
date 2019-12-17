@@ -184,6 +184,12 @@ impl ClusterNodeInfo {
     fn slave_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<(), Box<dyn Error>> {
         if node_status.role == "slave".to_string() {
             if node_status.online{
+                if !node_status.sql_thread {
+                    return Ok(());
+                }
+                if !node_status.io_thread {
+                    return Ok(())
+                }
                 if node_status.seconds_behind <=100 {
                     route_info.set_slave_info(node);
                 }
