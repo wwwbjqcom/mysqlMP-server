@@ -325,11 +325,11 @@ impl ElectionMaster {
     /// 执行切换操作
     /// 
     fn change(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        self.check_state.update_db(&db, &self.down_node_info.host)?;
         if !self.is_master(db)?{
             info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
             return Ok(());
         }
-        self.check_state.update_db(&db, &self.down_node_info.host)?;
         info!("{:?}", self.check_state);
         if self.check_state.db_down {
             // mysql实例宕机
