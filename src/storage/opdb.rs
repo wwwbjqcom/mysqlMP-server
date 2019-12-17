@@ -56,7 +56,7 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo
 
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct HaChangeLog {
     pub key: String,                        //格式 host_timestamp  host为宕机节点
     pub cluster_name: String,

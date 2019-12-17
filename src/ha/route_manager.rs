@@ -65,6 +65,7 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
+        info!("{:?}", result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
@@ -77,6 +78,7 @@ impl RouteInfo {
 
     fn check_recovery_status(&self, key: &String, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let result = db.prefix_iterator(key, &CfNameTypeCode::HaChangeLog.get())?;
+        info!("{:?}", result);
         let mut tmp = vec![];
         for row in result {
             if row.key.starts_with(key){
@@ -87,6 +89,7 @@ impl RouteInfo {
         if tmp.len() > 0 {
             tmp.sort_by(|a, b| b.key.cmp(&a.key));
             let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
+            info!("{:?}", value);
             if value.switch_status{
                 return Ok(());
             }
