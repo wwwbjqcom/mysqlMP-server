@@ -158,9 +158,12 @@ impl ClusterNodeInfo {
     fn route_check(&self, db: &web::Data<DbInfo>) -> Result<RouteInfo, Box<dyn Error>> {
         let mut route_info = RouteInfo::new(self.cluster_name.clone());
         for node in &self.node_list{
+            info!("{:?}", node);
             let status = db.get(&node.key, &CfNameTypeCode::NodesState.get())?;
+            info!("{:?}", status)
             if status.value.len() == 0 {continue;};
             let cur_state: MysqlState = serde_json::from_str(&status.value)?;
+            info!("{:?}", &cur_state);
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
                 continue;
             };
