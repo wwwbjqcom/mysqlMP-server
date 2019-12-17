@@ -65,14 +65,15 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
-        //info!("{:?}", result);
+        info!("{}:{:?}", key, result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
                 self.check_recovery_status(key, db)?;
                 return Ok(false)
-            };
-            return Ok(false)
+            }else if role == "slave".to_string() {
+                return Ok(false)
+            }
         }
         return Ok(true);
     }
