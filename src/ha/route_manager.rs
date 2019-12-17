@@ -65,7 +65,7 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
-        info!("{}:{:?}", key, result);
+        //info!("{}:{:?}", key, result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
@@ -175,7 +175,7 @@ impl ClusterNodeInfo {
     fn master_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<bool, Box<dyn Error>> {
         //info!("{:?}", node_status);
         if node_status.role == "master".to_string() {
-            if node_status.online {
+            if node.value.online {
                 route_info.set_master_info(node);
                 return Ok(true);
             }else {
@@ -195,9 +195,9 @@ impl ClusterNodeInfo {
     /// 3、如果为实例宕机直接剔除
     /// 4、如果client宕机将不做任何操作， 直接添加对应节点， 这里无法检测hebind值，因为如果client宕机将不会更新状态
     fn slave_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<(), Box<dyn Error>> {
-        info!("{:?}", node_status);
+        //info!("{:?}", node_status);
         if node_status.role == "slave".to_string() {
-            if node_status.online{
+            if node.value.online{
                 if !node_status.sql_thread {
                     return Ok(());
                 }
