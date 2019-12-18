@@ -5,15 +5,94 @@
 
 use actix_web::{web};
 use std::sync::{mpsc, Arc, Mutex};
-use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
 use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo};
+use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo, RowsSql};
 use std::{thread, time};
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
 use crate::storage::opdb::HaChangeLog;
+
+
+///
+/// 用于保存一条sql和回滚sql的对应关系
+/// 包含是否已执行操作， 和确认正常的操作
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SqlRelation{
+    pub number: u64,            //序号
+    pub current: String,        //binlog原始sql
+    pub rollback: String,       //binlog回滚语句
+    pub carried: bool,          //是否已执行
+    pub confirm: bool,          //是否已确认为正常数据
+}
+impl SqlRelation {
+    pub fn new(cur: &String, rollback: &String, num: &u64) -> SqlRelation {
+        SqlRelation {
+            number: num.clone(),
+            current: cur.clone(),
+            rollback: rollback.clone(),
+            carried: false,
+            confirm: false
+        }
+    }
+}
+
+///
+/// 用于保存宕机回复所产生的差异数据
+/// 并保存批量操作的状态
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DifferenceSql {
+    pub host: String,               //产生数据的节点
+    pub etype: String,              //记录节点执行操作的类型，rollback和append
+    pub cluster: String,            //集群名称
+    pub total: usize,               // sql条数
+    pub sqls: Vec<SqlRelation>,     //sql对应信息
+    pub time: i64,
+    pub status: u8,                 //判断是否已全部处理， 1为全部处理，0表示还有未处理的
+}
+
+impl DifferenceSql{
+    pub fn new(row_sql: &RowsSql, host: &String) -> Result<DifferenceSql, Box<dyn Error>> {
+        let mut sqls = vec![];
+        let mut num = 0 as u64;
+        for traction in &row_sql.sqls{
+            let cur_sql = &traction.cur_sql;
+            let rollback_sql = &traction.rollback_sql;
+            for (index, sql) in cur_sql.iter().enumerate(){
+                num += 1;
+                sqls.push(SqlRelation::new(sql, &rollback_sql[index], &num));
+            }
+        }
+
+        Ok(DifferenceSql{
+            host: host.clone(),
+            etype: row_sql.etype.clone(),
+            cluster: "".to_string(),
+            total: sqls.len(),
+            sqls,
+            time: crate::timestamp(),
+            status: 0
+        })
+    }
+
+    fn alter_cluster(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let result = db.get(&self.host, &CfNameTypeCode::HaNodesInfo.get())?;
+        let info: HostInfoValue = serde_json::from_str(&result.value).unwrap();
+        self.cluster = info.cluster_name;
+        Ok(())
+    }
+
+    pub fn save(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        if self.etype == "append".to_string(){return Ok(())}
+        self.alter_cluster(db)?;
+        let key = format!("{}:{}_{}", &self.cluster, &self.host, &self.time);
+        db.prefix_put(&PrefixTypeCode::RollBackSql, &key, &self)?;
+        Ok(())
+    }
+}
+
 
 ///
 ///用于检查状态
@@ -165,6 +244,10 @@ impl RecoveryDownNode {
             let row_sql = MyProtocol::RecoveryCluster.recovery(&self.host, &self.ha_log.recovery_info)?;
             info!("{:?}", row_sql);
             self.update_state(db)?;
+
+            let mut dif_info = DifferenceSql::new(&row_sql, &self.host)?;
+            dif_info.save(db)?;
+
             //宕机恢复完成
             return Ok(())
         }

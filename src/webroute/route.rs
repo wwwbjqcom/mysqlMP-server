@@ -9,7 +9,7 @@ use crate::storage;
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
 use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
 use std::error::Error;
-use crate::ha::nodes_manager::SwitchForNodes;
+use crate::ha::nodes_manager::{SwitchForNodes, DifferenceSql, SqlRelation};
 use crate::storage::opdb::{HaChangeLog, UserInfo};
 use crate::ha::route_manager::RouteInfo;
 
@@ -499,6 +499,96 @@ pub fn get_user_info(db: web::Data<DbInfo>, session: Session) -> actix_web::Resu
         }
     }
     Ok(HttpReponseErr::no_session())
+}
+
+
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct GetSql{
+    cluster_name: String
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ResponseSql {
+    pub cluster_name: String,
+    pub host: String,
+    pub time: i64,
+    pub number: u64,            //序号
+    pub current: String,        //binlog原始sql
+    pub rollback: String,       //binlog回滚语句
+    pub carried: bool,          //是否已执行
+    pub confirm: bool,          //是否已确认为正常
+}
+impl ResponseSql{
+    fn new(info: &DifferenceSql) -> ResponseSql {
+        ResponseSql{
+            cluster_name: info.cluster.clone(),
+            host: info.host.clone(),
+            time: info.time.clone(),
+            number: 0,
+            current: "".to_string(),
+            rollback: "".to_string(),
+            carried: false,
+            confirm: false
+        }
+    }
+
+    fn append_sql_info(&mut self, info: &SqlRelation) {
+        self.number = info.number.clone();
+        self.current = info.current.clone();
+        self.rollback = info.rollback.clone();
+        self.carried = info.carried.clone();
+        self.confirm = info.confirm.clone();
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ResponseAllSql {
+    status: u8,
+    total: usize,
+    sql_info: Vec<ResponseSql>
+}
+impl ResponseAllSql {
+    fn new() -> ResponseAllSql {
+        ResponseAllSql{ status: 1, total: 0, sql_info: vec![] }
+    }
+
+    fn init_sql_info(&mut self, db: &web::Data<DbInfo>, info: &GetSql) -> Result<(), Box<dyn Error>> {
+        let mut sql_vec = vec![];
+        let mut total = 0 as usize;
+        let prefix = PrefixTypeCode::RollBackSql.prefix();
+        let result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+        for row in result {
+            if row.value.len() == 0 {continue;}
+            if info.cluster_name.len() > 0 {
+                let tmp = format!("{}:{}", &prefix, &info.cluster_name);
+                if !row.key.starts_with(&tmp){
+                    continue;
+                }
+            }
+
+            if row.key.starts_with(&prefix){
+                let value: DifferenceSql = serde_json::from_str(&row.value).unwrap();
+                let mut res_all = ResponseSql::new(&value);
+                for sql_info in &value.sqls{
+                    res_all.append_sql_info(sql_info);
+                    sql_vec.push(res_all.clone());
+                    total += 1;
+                }
+            }
+        }
+        self.sql_info = sql_vec;
+        self.total = total;
+        Ok(())
+    }
+}
+
+pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix_web::Result<HttpResponse> {
+    let mut re = ResponseAllSql::new();
+    if let Err(e) = re.init_sql_info(&db, &info){
+        return Ok(HttpReponseErr::new(e.to_string()));
+    };
+    Ok(response_value(&re))
 }
 
 

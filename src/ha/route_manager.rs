@@ -91,7 +91,13 @@ impl RouteInfo {
         if tmp.len() > 0 {
             tmp.sort_by(|a, b| b.key.cmp(&a.key));
             let key = tmp[0].key.clone();
+            let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
+            //info!("{:?}", value);
+            if value.switch_status{
+                return Ok(());
+            }
 
+            //这里继续执行表示最后一条数据未正常切换
             //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
             let tmp_list = key.split("_");
             let tmp_list = tmp_list.collect::<Vec<&str>>();
@@ -101,11 +107,6 @@ impl RouteInfo {
                 return Err(err.into());
             }
             //
-            let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
-            //info!("{:?}", value);
-            if value.switch_status{
-                return Ok(());
-            }
         }
         let err = format!("host: {} is master, but status unusual", key);
         return Err(err.into());
