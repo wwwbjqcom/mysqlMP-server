@@ -585,6 +585,7 @@ impl ResponseAllSql {
         let prefix = PrefixTypeCode::RollBackSql.prefix();
         let result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
         for row in result {
+            info!("{:?}", &row);
             if row.value.len() == 0 {continue;}
             if info.cluster_name.len() > 0 {
                 let tmp = format!("{}:{}", &prefix, &info.cluster_name);
@@ -605,7 +606,6 @@ impl ResponseAllSql {
         }
         self.sql_info = sql_vec;
         self.total = total;
-        info!("{:?}", &self);
         Ok(())
     }
 }
