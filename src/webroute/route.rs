@@ -610,6 +610,7 @@ impl ResponseAllSql {
 }
 
 pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix_web::Result<HttpResponse> {
+    //info!("{:?}", &info);
     let mut re = ResponseAllSql::new();
     if let Err(e) = re.init_sql_info(&db, &info){
         return Ok(HttpReponseErr::new(e.to_string()));

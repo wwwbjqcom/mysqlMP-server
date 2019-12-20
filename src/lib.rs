@@ -189,7 +189,7 @@ pub fn start_web(db: DbInfo) {
             )
             .route("/", web::get().to(webroute::index))
             .route("/login", web::post().to(webroute::route::login))
-            .route("/getsqls",web::post().to(webroute::route::get_rollback_sql))
+            .route("/pages/DBHA/getsqls",web::post().to(webroute::route::get_rollback_sql))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/pages/DBHA/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/pages/logs/getuserinfo", web::post().to(webroute::route::get_user_info))
