@@ -43,46 +43,70 @@ impl State {
 pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> HttpResponse {
     let state = storage::opdb::insert_mysql_host_info(data, &info);
     return response(state);
-//    HttpResponse::from(match state {
-//        Ok(()) => {
-//            HttpResponse::Ok()
-//                .json(State{
-//                    status: 1, value: "OK".parse().unwrap()
-//                })
-//        }
-//        Err(e) => {
-//            HttpResponse::Ok()
-//                .json(ReponseErr::new(e))
-//        }
-//    })
+}
+
+
+struct CheckSqlInfo{
+    clusters: Vec<String>   //存在未执行sql的集群名
+}
+impl CheckSqlInfo {
+    fn new(db: &web::Data<DbInfo>) -> Result<CheckSqlInfo, Box<dyn Error>>{
+        let mut tmp = vec![];
+        let sql_result = db.prefix_iterator(&PrefixTypeCode::RollBackSql.prefix(), &CfNameTypeCode::SystemData.get())?;
+        for info in &sql_result{
+            let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
+            if !value.status{
+                tmp.push(value.cluster.clone());
+            }
+        }
+        Ok(CheckSqlInfo{ clusters: tmp })
+    }
+
+    fn check(&self, cluster: &String) -> bool {
+        for cl in &self.clusters {
+            if cl == cluster {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 /// extract `export mysql host info` using serde
 pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let result = data.iterator(&cf_name,&String::from(""));
-    let mut rows = AllNodeInfo::new();
-    match result {
-        Ok(v) => {
-            for row in v {
-                let role = get_nodes_role(&data, &row.key);
-                let value: HostInfoValue = serde_json::from_str(&row.value).unwrap();
-                let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role);
-                if &value.rtype == &String::from("route") {
-                    rows.cluster_op(String::from("route"), v);
-                }else {
-                    rows.cluster_op(value.cluster_name, v);
+    let ck_sql_info = CheckSqlInfo::new(&data);
+    match ck_sql_info {
+        Ok(rc) => {
+            let mut rows = AllNodeInfo::new();
+            match result {
+                Ok(v) => {
+                    for row in v {
+                        let role = get_nodes_role(&data, &row.key);
+                        let value: HostInfoValue = serde_json::from_str(&row.value).unwrap();
+
+                        let difference = rc.check(&value.cluster_name);
+                        let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role);
+                        if &value.rtype == &String::from("route") {
+                            rows.cluster_op(String::from("route"), v, difference);
+                        }else {
+                            rows.cluster_op(value.cluster_name, v, difference);
+                        }
+                        //rows.push(serde_json::json!(v));
+                    }
+                    return response_value(&rows.rows);
                 }
-                //rows.push(serde_json::json!(v));
+                Err(e) => {
+                    return HttpReponseErr::new(e.to_string());
+                }
             }
-            HttpResponse::Ok()
-                .json(rows.rows)
         }
-        Err(_e) => {
-            HttpResponse::Ok()
-                .json(vec![AllNodeInfo::new()])
+        Err(e) => {
+            return HttpReponseErr::new(e.to_string());
         }
     }
+
 }
 
 pub fn get_nodes_role(data: &web::Data<DbInfo>, key: &String) -> String {

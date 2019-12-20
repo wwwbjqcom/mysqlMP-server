@@ -50,7 +50,7 @@ pub struct DifferenceSql {
     pub total: usize,               // sql条数
     pub sqls: Vec<SqlRelation>,     //sql对应信息
     pub time: i64,
-    pub status: u8,                 //判断是否已全部处理， 1为全部处理，0表示还有未处理的
+    pub status: bool,                 //判断是否已全部处理， true为全部处理，false表示还有未处理的
 }
 
 impl DifferenceSql{
@@ -73,7 +73,7 @@ impl DifferenceSql{
             total: sqls.len(),
             sqls,
             time: crate::timestamp(),
-            status: 0
+            status: false
         })
     }
 

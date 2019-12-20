@@ -536,16 +536,18 @@ pub struct HostInfoValueGetAllState {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClusterHostInfoValue {
     pub cluster_name: String,
+    pub difference_data: bool,
     pub node_list: Vec<HostInfoValueGetAllState>,
 }
 
 impl ClusterHostInfoValue {
     pub fn new(cluster_name: String) -> ClusterHostInfoValue {
-        ClusterHostInfoValue{ cluster_name, node_list: vec![] }
+        ClusterHostInfoValue{ cluster_name, difference_data: false, node_list: vec![] }
     }
 
-    pub fn add_node(&mut self,node_info: HostInfoValueGetAllState) {
+    pub fn add_node(&mut self,node_info: HostInfoValueGetAllState, difference: bool) {
         self.node_list.push(node_info);
+        if difference{self.difference_data = difference.clone()}
     }
 }
 
@@ -559,15 +561,15 @@ impl AllNodeInfo {
         AllNodeInfo{ rows: vec![] }
     }
 
-    pub fn cluster_op(&mut self, cluster_name: String, node_info: HostInfoValueGetAllState) {
+    pub fn cluster_op(&mut self, cluster_name: String, node_info: HostInfoValueGetAllState, difference: bool) {
         for node in &mut self.rows {
             if node.cluster_name == cluster_name {
-                node.add_node(node_info);
+                node.add_node(node_info, difference);
                 return;
             }
         }
         let mut cluster_info = ClusterHostInfoValue::new(cluster_name);
-        cluster_info.add_node(node_info);
+        cluster_info.add_node(node_info, difference);
         self.rows.push(cluster_info);
     }
 }
