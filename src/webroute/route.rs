@@ -58,7 +58,9 @@ impl CheckSqlInfo {
             if !info.key.starts_with(&prefix){continue;}
             let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
             if &value.status == &0{
-                tmp.push(value.cluster.clone());
+                if value.sqls.len() > 0{
+                    tmp.push(value.cluster.clone());
+                }
             }
         }
         Ok(CheckSqlInfo{ clusters: tmp })
@@ -585,7 +587,7 @@ impl ResponseAllSql {
         let prefix = PrefixTypeCode::RollBackSql.prefix();
         let result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
         for row in result {
-            info!("{:?}", &row);
+            //info!("{:?}", &row);
             if row.value.len() == 0 {continue;}
             if info.cluster_name.len() > 0 {
                 let tmp = format!("{}:{}", &prefix, &info.cluster_name);
