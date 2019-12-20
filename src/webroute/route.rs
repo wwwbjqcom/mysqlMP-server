@@ -54,6 +54,7 @@ impl CheckSqlInfo {
         let mut tmp = vec![];
         let sql_result = db.prefix_iterator(&PrefixTypeCode::RollBackSql.prefix(), &CfNameTypeCode::SystemData.get())?;
         for info in &sql_result{
+            info!("{:?}", &info);
             let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
             if &value.status == &0{
                 tmp.push(value.cluster.clone());
