@@ -605,7 +605,7 @@ impl ResponseAllSql {
         }
         self.sql_info = sql_vec;
         self.total = total;
-        info!("{:?}", &self)
+        info!("{:?}", &self);
         Ok(())
     }
 }
