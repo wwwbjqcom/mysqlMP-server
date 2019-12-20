@@ -52,9 +52,10 @@ struct CheckSqlInfo{
 impl CheckSqlInfo {
     fn new(db: &web::Data<DbInfo>) -> Result<CheckSqlInfo, Box<dyn Error>>{
         let mut tmp = vec![];
-        let sql_result = db.prefix_iterator(&PrefixTypeCode::RollBackSql.prefix(), &CfNameTypeCode::SystemData.get())?;
+        let prefix = PrefixTypeCode::RollBackSql.prefix();
+        let sql_result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
         for info in &sql_result{
-            info!("{:?}", &info);
+            if !info.key.starts_with(&prefix){continue;}
             let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
             if &value.status == &0{
                 tmp.push(value.cluster.clone());
