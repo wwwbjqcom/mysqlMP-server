@@ -770,13 +770,13 @@ pub struct MarkSqlAll{
 
 ///
 /// 标记sql为已完成
-pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<String>) -> HttpResponse {
+pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpResponse {
     info!("{:?}", info);
-//    for mark in &info.sql_info{
-//        if let Err(e) = mark.set_mark(&db){
-//            let err = format!("info: {:?} {}", &mark, e.to_string());
-//            return HttpReponseErr::new(err);
-//        }
-//    }
+    for mark in &info.sql_info{
+        if let Err(e) = mark.set_mark(&db){
+            let err = format!("info: {:?} {}", &mark, e.to_string());
+            return HttpReponseErr::new(err);
+        }
+    }
     State::new()
 }
