@@ -87,6 +87,32 @@ impl DifferenceSql{
     pub fn save(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         if self.etype == "append".to_string(){return Ok(())}
         self.alter_cluster(db)?;
+        return self.save_key(db);
+    }
+
+    ///
+    /// 执行sql或确认之后进行修改，同时对整次过程产生的数据进行判断是否已全部处理
+    pub fn alter(&mut self, db: &web::Data<DbInfo>, number: &u64) -> Result<(), Box<dyn Error>>{
+        if self.status == 1{return Ok(());};
+        let mut total_c = 0 as usize;
+        for r in &mut self.sqls{
+            if r.confirm{
+                total_c += 1;
+                continue;
+            }
+            if &r.number == number{
+                r.confirm = true;
+                total_c += 1;
+            }
+        }
+
+        if total_c == self.total {
+            self.status = 1;
+        }
+        return self.save_key(db);
+    }
+
+    fn save_key(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let key = format!("{}:{}_{}", &self.cluster, &self.host, &self.time);
         db.prefix_put(&PrefixTypeCode::RollBackSql, &key, &self)?;
         Ok(())

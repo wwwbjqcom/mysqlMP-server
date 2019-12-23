@@ -7,7 +7,7 @@ use actix_session::{ Session};
 use serde::{Deserialize, Serialize};
 use crate::storage;
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
-use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo};
+use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, CommandSql, MyProtocol};
 use std::error::Error;
 use crate::ha::nodes_manager::{SwitchForNodes, DifferenceSql, SqlRelation};
 use crate::storage::opdb::{HaChangeLog, UserInfo};
@@ -622,3 +622,160 @@ pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix
 }
 
 
+
+///
+/// 需要追加的sql信息
+#[derive(Serialize, Deserialize)]
+pub struct PushSqlInfo{
+    cluster_name: String,   //集群名
+    host: String,
+    time: i64,
+    number: u64,
+    sql: String             //binlog原始sql
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PushSqlAll{
+    sql_info: Vec<PushSqlInfo>
+}
+
+pub struct ExtractSql{
+    cluster_name: String,
+    sqls: Vec<String>,
+    markinfo: Vec<MarkSqlInfo>
+}
+impl ExtractSql{
+    fn new() -> ExtractSql{
+        ExtractSql{
+            cluster_name: "".to_string(),
+            sqls: vec![],
+            markinfo: vec![]
+        }
+    }
+}
+
+pub struct ExtractAll{
+    info: Vec<ExtractSql>,
+    success_cluster: Vec<String>
+}
+impl ExtractAll{
+    fn new() -> ExtractAll{
+        ExtractAll{
+            info: vec![],
+            success_cluster: vec![]
+        }
+    }
+    fn extract(&mut self, info: &PushSqlInfo) {
+        let cluster_name = info.cluster_name.clone();
+        let sql = info.sql.clone();
+        let mark_info = MarkSqlInfo{
+            cluster_name:cluster_name.clone(),
+            host: info.host.clone(),
+            time: info.time.clone(),
+            number: info.number.clone()
+        };
+
+        for extractsql in &mut self.info{
+            if extractsql.cluster_name == cluster_name{
+                extractsql.sqls.push(sql.clone());
+                extractsql.markinfo.push(mark_info.clone());
+                return;
+            }
+        }
+
+        let mut extra = ExtractSql::new();
+        extra.sqls.push(sql.clone());
+        extra.markinfo.push(mark_info.clone());
+        self.info.push(extra);
+    }
+
+    fn execute(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        for extrac_info in &self.info{
+            let master_host = self.get_master_info(&extrac_info.cluster_name, db)?;
+            self.push_sql(&master_host, &extrac_info.sqls)?;
+            self.success_cluster.push(extrac_info.cluster_name.clone());
+            self.alter_sql_info_from_db(db, &extrac_info.markinfo)?;
+        }
+        Ok(())
+    }
+
+
+    fn get_master_info(&self, cluster_name: &String, db: &web::Data<DbInfo>) -> Result<String, Box<dyn Error>>{
+        let route_result = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster_name)?;
+        let route_info: RouteInfo = serde_json::from_str(&route_result.value).unwrap();
+        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(), &String::from(""))?;
+        for kv in result{
+            let value: HostInfoValue = serde_json::from_str(&kv.value).unwrap();
+            if kv.key.starts_with(&route_info.write.host){
+                if &value.cluster_name == cluster_name{
+                    return Ok(kv.key);
+                }
+            }
+        }
+        let err = format!("could not get master information for cluster {}", cluster_name);
+        return Err(err.into());
+    }
+
+    fn push_sql(&self, master_host: &String, sqls: &Vec<String>) -> Result<(), Box<dyn Error>> {
+        let command_sql = CommandSql{ sqls: sqls.clone() };
+        return MyProtocol::Command.push_sql(master_host, &command_sql);
+    }
+
+    fn alter_sql_info_from_db(&self, db: &web::Data<DbInfo>, mark_info: &Vec<MarkSqlInfo>) -> Result<(), Box<dyn Error>>{
+        for mark in mark_info{
+            mark.set_mark(db)?
+        }
+        Ok(())
+    }
+}
+
+///
+/// 追加回滚sql
+pub fn push_sql(db: web::Data<DbInfo>, info: web::Form<PushSqlAll>) -> HttpResponse {
+    let mut extra = ExtractAll::new();
+    for info in &info.sql_info{
+        extra.extract(info);
+    }
+    if let Err(e) = extra.execute(&db){
+        let err = format!("success_cluster: {:?}, err: {:?}", &extra.success_cluster, e.to_string());
+        return HttpReponseErr::new(err);
+    };
+
+    State::new()
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct MarkSqlInfo{
+    cluster_name: String,   //集群名
+    host: String,
+    time: i64,
+    number: u64
+}
+impl MarkSqlInfo{
+    fn set_mark(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        let prefix = PrefixTypeCode::RollBackSql.prefix();
+        let prefix = format!("{}:{}:{}_{}", &prefix, &self.cluster_name, &self.host, &self.time);
+        let result = db.prefix_get(&PrefixTypeCode::RollBackSql, &prefix)?;
+        let mut value: DifferenceSql = serde_json::from_str(&result.value).unwrap();
+        value.alter(&db, &self.number)?;
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MarkSqlAll{
+    sql_info: Vec<MarkSqlInfo>
+}
+
+///
+/// 标记sql为已完成
+pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpResponse {
+    for mark in &info.sql_info{
+        if let Err(e) = mark.set_mark(&db){
+            let err = format!("info: {:?} {}", &mark, e.to_string());
+            return HttpReponseErr::new(err);
+        }
+    }
+    State::new()
+}

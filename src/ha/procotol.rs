@@ -29,6 +29,7 @@ pub enum  MyProtocol {
     Ping,               //存活检查
     SetVariables,
     RecoveryVariables,
+    Command,            //执行追加sql
     Ok,
     Error,
     UnKnow
@@ -71,6 +72,8 @@ impl MyProtocol {
             return MyProtocol::PushBinlog;
         }else if code == &0x01 {
             return MyProtocol::Ping;
+        }else if code == &0x05 {
+            return MyProtocol::Command;
         }
         else {
             return MyProtocol::UnKnow;
@@ -97,6 +100,7 @@ impl MyProtocol {
             MyProtocol::SetVariables => 0x04,
             MyProtocol::RecoveryVariables => 0x03,
             MyProtocol::Ping => 0x01,
+            MyProtocol::Command => 0x05,
             MyProtocol::UnKnow => 0xff
         }
     }
@@ -142,6 +146,13 @@ impl MyProtocol {
                 return Err(a.into());
             }
         }
+    }
+
+    ///
+    /// 推送需要执行的binlog到新master执行
+    pub fn push_sql(&self, host: &String, info: &CommandSql) -> Result<(), Box<dyn Error>>{
+        let packet = self.socket_io(host, info)?;
+        return self.response_code_check(&packet);
     }
 
     ///
@@ -588,5 +599,13 @@ impl HostInfoValueGetAllState {
             role
         }
     }
+}
+
+
+///
+/// 用于追加sql， 发送于客户端执行
+#[derive(Deserialize, Serialize)]
+pub struct CommandSql{
+    pub sqls: Vec<String>
 }
 
