@@ -763,7 +763,7 @@ impl MarkSqlInfo{
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MarkSqlAll{
     sql_info: Vec<MarkSqlInfo>
 }
@@ -771,6 +771,7 @@ pub struct MarkSqlAll{
 ///
 /// 标记sql为已完成
 pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpResponse {
+    println!("{:?}", info);
     for mark in &info.sql_info{
         if let Err(e) = mark.set_mark(&db){
             let err = format!("info: {:?} {}", &mark, e.to_string());
