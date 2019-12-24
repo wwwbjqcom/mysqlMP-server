@@ -731,7 +731,7 @@ impl ExtractAll{
 
 ///
 /// 追加回滚sql
-pub fn push_sql(db: web::Data<DbInfo>, info: web::Form<PushSqlAll>) -> HttpResponse {
+pub fn push_sql(db: web::Data<DbInfo>, info: web::Json<PushSqlAll>) -> HttpResponse {
     let mut extra = ExtractAll::new();
     for info in &info.sql_info{
         extra.extract(info);
