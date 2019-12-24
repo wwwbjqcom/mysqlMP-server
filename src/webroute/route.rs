@@ -754,9 +754,8 @@ pub struct MarkSqlInfo{
 }
 impl MarkSqlInfo{
     fn set_mark(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
-        let prefix = PrefixTypeCode::RollBackSql.prefix();
-        let prefix = format!("{}:{}:{}_{}", &prefix, &self.cluster_name, &self.host, &self.time);
-        let result = db.prefix_get(&PrefixTypeCode::RollBackSql, &prefix)?;
+        let key = format!("{}:{}_{}", &self.cluster_name, &self.host, &self.time);
+        let result = db.prefix_get(&PrefixTypeCode::RollBackSql, &key)?;
         info!("{:?}", result);
         let mut value: DifferenceSql = serde_json::from_str(&result.value).unwrap();
         value.alter(&db, &self.number)?;
