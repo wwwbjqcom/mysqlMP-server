@@ -791,5 +791,5 @@ pub fn extract(req: HttpRequest) -> impl Responder {
         .wait()
         .expect("Err with reading json.");
 
-    format!("{} {} {:?}", params.0, params.1, info.sql_info)
+    format!("{:?} {:?}", params, info.sql_info)
 }
