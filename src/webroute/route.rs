@@ -2,7 +2,7 @@
 @author: xiao cai niao
 @datetime: 2019/11/5
 */
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, HttpRequest, Responder, FromRequest};
 use actix_session::{ Session};
 use serde::{Deserialize, Serialize};
 use crate::storage;
@@ -780,4 +780,16 @@ pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpRespo
         }
     }
     State::new()
+}
+
+
+use futures::future::Future;
+pub fn extract(req: HttpRequest) -> impl Responder {
+    let params = web::Path::<(String, String)>::extract(&req).unwrap();
+
+    let info = web::Json::<MarkSqlAll>::extract(&req)
+        .wait()
+        .expect("Err with reading json.");
+
+    format!("{} {} {:?}", params.0, params.1, info.sql_info)
 }
