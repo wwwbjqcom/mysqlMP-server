@@ -187,6 +187,15 @@ pub fn start_web(db: DbInfo) {
                             .to(webroute::route::get_route_info)
                     )
             )
+            .service(
+                web::resource("/pages/DBHA/marksqlinfo")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::mark_sql)
+                    )
+            )
             .route("/", web::get().to(webroute::index))
             .route("/login", web::post().to(webroute::route::login))
             .route("/pages/DBHA/getsqls",web::post().to(webroute::route::get_rollback_sql))
@@ -204,7 +213,7 @@ pub fn start_web(db: DbInfo) {
             .route("/pages/DBHA/setmaintain", web::post().to(webroute::route::edit_maintain))
             .route("/pages/DBHA/switch", web::post().to(webroute::route::switch))
             .route("/pages/logs/getlogdata", web::post().to(webroute::route::switchlog))
-            .route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::mark_sql))
+            //.route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::mark_sql))
             .route("/pages/DBHA/pushsqlinfo", web::post().to(webroute::route::push_sql))
             .route("/{filename:.*}", web::get().to(webroute::index_static))
             .default_service(

@@ -771,7 +771,7 @@ pub struct MarkSqlAll{
 
 ///
 /// 标记sql为已完成
-pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpResponse {
+pub fn mark_sql(db: web::Data<DbInfo>, info: web::Json<MarkSqlAll>) -> HttpResponse {
     info!("{:?}", &info);
     for mark in &info.sql_info{
         if let Err(e) = mark.set_mark(&db){
