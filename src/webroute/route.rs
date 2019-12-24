@@ -785,11 +785,11 @@ pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpRespo
 
 use futures::future::Future;
 pub fn extract(req: HttpRequest) -> impl Responder {
-    let params = web::Path::<(String, String)>::extract(&req).unwrap();
+    //let params = web::Path::<(String, String)>::extract(&req).unwrap();
 
     let info = web::Json::<MarkSqlAll>::extract(&req)
         .wait()
         .expect("Err with reading json.");
 
-    format!("{:?} {:?}", params, info.sql_info)
+    format!("{:?}", info.sql_info)
 }
