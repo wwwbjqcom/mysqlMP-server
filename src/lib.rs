@@ -204,7 +204,7 @@ pub fn start_web(db: DbInfo) {
             .route("/pages/DBHA/setmaintain", web::post().to(webroute::route::edit_maintain))
             .route("/pages/DBHA/switch", web::post().to(webroute::route::switch))
             .route("/pages/logs/getlogdata", web::post().to(webroute::route::switchlog))
-            .route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::extract))
+            .route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::mark_sql))
             .route("/pages/DBHA/pushsqlinfo", web::post().to(webroute::route::push_sql))
             .route("/{filename:.*}", web::get().to(webroute::index_static))
             .default_service(

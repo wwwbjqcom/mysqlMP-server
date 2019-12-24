@@ -2,7 +2,7 @@
 @author: xiao cai niao
 @datetime: 2019/11/5
 */
-use actix_web::{web, HttpResponse, HttpRequest, Responder, FromRequest};
+use actix_web::{web, HttpResponse};
 use actix_session::{ Session};
 use serde::{Deserialize, Serialize};
 use crate::storage;
@@ -772,7 +772,7 @@ pub struct MarkSqlAll{
 ///
 /// 标记sql为已完成
 pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpResponse {
-    info!("{:?}", info);
+    info!("{:?}", &info);
     for mark in &info.sql_info{
         if let Err(e) = mark.set_mark(&db){
             let err = format!("info: {:?} {}", &mark, e.to_string());
@@ -783,13 +783,3 @@ pub fn mark_sql(db: web::Data<DbInfo>, info: web::Form<MarkSqlAll>) -> HttpRespo
 }
 
 
-use futures::future::Future;
-pub fn extract(req: HttpRequest) -> impl Responder {
-    //let params = web::Path::<(String, String)>::extract(&req).unwrap();
-
-//    let info = web::Form::<MarkSqlAll>::extract(&req)
-//        .wait()
-//        .expect("Err with reading json.");
-
-    format!("{:?}", &req)
-}
