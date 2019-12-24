@@ -629,8 +629,8 @@ pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix
 pub struct PushSqlInfo{
     pub cluster_name: String,   //集群名
     pub host: String,
-    pub time: String,
-    pub number: String,
+    pub time: i64,
+    pub number: u64,
     pub sql: String             //binlog原始sql
 }
 
@@ -749,17 +749,17 @@ pub fn push_sql(db: web::Data<DbInfo>, info: web::Form<PushSqlAll>) -> HttpRespo
 pub struct MarkSqlInfo{
     pub cluster_name: String,   //集群名
     pub host: String,
-    pub time: String,
-    pub number: String
+    pub time: i64,
+    pub number: u64
 }
 impl MarkSqlInfo{
     fn set_mark(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let prefix = PrefixTypeCode::RollBackSql.prefix();
         let prefix = format!("{}:{}:{}_{}", &prefix, &self.cluster_name, &self.host, &self.time);
         let result = db.prefix_get(&PrefixTypeCode::RollBackSql, &prefix)?;
+        info!("{:?}", result);
         let mut value: DifferenceSql = serde_json::from_str(&result.value).unwrap();
-        let a: u64 = self.number.clone().parse()?;
-        value.alter(&db, &a)?;
+        value.alter(&db, &self.number)?;
         Ok(())
     }
 }
