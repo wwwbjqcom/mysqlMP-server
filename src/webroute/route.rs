@@ -787,9 +787,9 @@ use futures::future::Future;
 pub fn extract(req: HttpRequest) -> impl Responder {
     //let params = web::Path::<(String, String)>::extract(&req).unwrap();
 
-    let info = web::Json::<MarkSqlAll>::extract(&req)
-        .wait()
-        .expect("Err with reading json.");
+//    let info = web::Form::<MarkSqlAll>::extract(&req)
+//        .wait()
+//        .expect("Err with reading json.");
 
-    format!("{:?}", info.sql_info)
+    format!("{:?}", &req)
 }
