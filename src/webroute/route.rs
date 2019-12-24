@@ -688,6 +688,7 @@ impl ExtractAll{
         let mut extra = ExtractSql::new();
         extra.sqls.push(sql.clone());
         extra.markinfo.push(mark_info.clone());
+        extra.cluster_name = cluster_name;
         self.info.push(extra);
     }
 
