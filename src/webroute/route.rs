@@ -625,7 +625,7 @@ pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix
 
 ///
 /// 需要追加的sql信息
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PushSqlInfo{
     pub cluster_name: String,   //集群名
     pub host: String,
@@ -634,11 +634,12 @@ pub struct PushSqlInfo{
     pub sql: String             //binlog原始sql
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PushSqlAll{
     pub sql_info: Vec<PushSqlInfo>
 }
 
+#[derive(Debug)]
 pub struct ExtractSql{
     cluster_name: String,
     sqls: Vec<String>,
@@ -654,6 +655,7 @@ impl ExtractSql{
     }
 }
 
+#[derive(Debug)]
 pub struct ExtractAll{
     pub info: Vec<ExtractSql>,
     pub success_cluster: Vec<String>
@@ -702,9 +704,11 @@ impl ExtractAll{
 
     fn get_master_info(&self, cluster_name: &String, db: &web::Data<DbInfo>) -> Result<String, Box<dyn Error>>{
         let route_result = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster_name)?;
+        info!("{:?}", &route_result);
         let route_info: RouteInfo = serde_json::from_str(&route_result.value).unwrap();
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(), &String::from(""))?;
         for kv in result{
+            if kv.value.len() == 0 {continue;}
             let value: HostInfoValue = serde_json::from_str(&kv.value).unwrap();
             if kv.key.starts_with(&route_info.write.host){
                 if &value.cluster_name == cluster_name{
@@ -732,10 +736,12 @@ impl ExtractAll{
 ///
 /// 追加回滚sql
 pub fn push_sql(db: web::Data<DbInfo>, info: web::Json<PushSqlAll>) -> HttpResponse {
+    info!("{:?}", &info);
     let mut extra = ExtractAll::new();
     for info in &info.sql_info{
         extra.extract(info);
     }
+    info!("{:?}", &extra);
     if let Err(e) = extra.execute(&db){
         let err = format!("success_cluster: {:?}, err: {:?}", &extra.success_cluster, e.to_string());
         return HttpReponseErr::new(err);
