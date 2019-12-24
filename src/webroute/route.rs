@@ -606,6 +606,9 @@ impl ResponseAllSql {
                 }
             }
         }
+        if sql_vec.len()>0{
+            sql_vec.sort_by(|a, b| b.time.cmp(&a.time));
+        }
         self.sql_info = sql_vec;
         self.total = total;
         Ok(())
@@ -705,7 +708,6 @@ impl ExtractAll{
 
     fn get_master_info(&self, cluster_name: &String, db: &web::Data<DbInfo>) -> Result<String, Box<dyn Error>>{
         let route_result = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster_name)?;
-        info!("{:?}", &route_result);
         let route_info: RouteInfo = serde_json::from_str(&route_result.value).unwrap();
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(), &String::from(""))?;
         for kv in result{
@@ -737,12 +739,10 @@ impl ExtractAll{
 ///
 /// 追加回滚sql
 pub fn push_sql(db: web::Data<DbInfo>, info: web::Json<PushSqlAll>) -> HttpResponse {
-    info!("{:?}", &info);
     let mut extra = ExtractAll::new();
     for info in &info.sql_info{
         extra.extract(info);
     }
-    info!("{:?}", &extra);
     if let Err(e) = extra.execute(&db){
         let err = format!("success_cluster: {:?}, err: {:?}", &extra.success_cluster, e.to_string());
         return HttpReponseErr::new(err);
@@ -763,7 +763,6 @@ impl MarkSqlInfo{
     fn set_mark(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let key = format!("{}:{}_{}", &self.cluster_name, &self.host, &self.time);
         let result = db.prefix_get(&PrefixTypeCode::RollBackSql, &key)?;
-        info!("{:?}", result);
         let mut value: DifferenceSql = serde_json::from_str(&result.value).unwrap();
         value.alter(&db, &self.number)?;
         Ok(())
@@ -778,7 +777,6 @@ pub struct MarkSqlAll{
 ///
 /// 标记sql为已完成
 pub fn mark_sql(db: web::Data<DbInfo>, info: web::Json<MarkSqlAll>) -> HttpResponse {
-    info!("{:?}", &info);
     for mark in &info.sql_info{
         if let Err(e) = mark.set_mark(&db){
             let err = format!("info: {:?} {}", &mark, e.to_string());
