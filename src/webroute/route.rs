@@ -627,16 +627,16 @@ pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix
 /// 需要追加的sql信息
 #[derive(Serialize, Deserialize)]
 pub struct PushSqlInfo{
-    cluster_name: String,   //集群名
-    host: String,
-    time: String,
-    number: String,
-    sql: String             //binlog原始sql
+    pub cluster_name: String,   //集群名
+    pub host: String,
+    pub time: String,
+    pub number: String,
+    pub sql: String             //binlog原始sql
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct PushSqlAll{
-    sql_info: Vec<PushSqlInfo>
+    pub sql_info: Vec<PushSqlInfo>
 }
 
 pub struct ExtractSql{
@@ -655,8 +655,8 @@ impl ExtractSql{
 }
 
 pub struct ExtractAll{
-    info: Vec<ExtractSql>,
-    success_cluster: Vec<String>
+    pub info: Vec<ExtractSql>,
+    pub success_cluster: Vec<String>
 }
 impl ExtractAll{
     fn new() -> ExtractAll{
@@ -747,10 +747,10 @@ pub fn push_sql(db: web::Data<DbInfo>, info: web::Form<PushSqlAll>) -> HttpRespo
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MarkSqlInfo{
-    cluster_name: String,   //集群名
-    host: String,
-    time: String,
-    number: String
+    pub cluster_name: String,   //集群名
+    pub host: String,
+    pub time: String,
+    pub number: String
 }
 impl MarkSqlInfo{
     fn set_mark(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
@@ -766,7 +766,7 @@ impl MarkSqlInfo{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MarkSqlAll{
-    sql_info: Vec<MarkSqlInfo>
+    pub sql_info: Vec<MarkSqlInfo>
 }
 
 ///
