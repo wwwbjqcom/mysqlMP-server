@@ -5,7 +5,7 @@
 
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use std::{thread, time};
-use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState};
+use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState, ReponseErr};
 use std::error::Error;
 use std::net::{TcpStream, SocketAddr, IpAddr, Ipv4Addr};
 use std::time::Duration;
@@ -182,18 +182,16 @@ fn get_nodes_info(db: &web::Data<DbInfo>) -> Result<Vec<NodesInfo>, Box<dyn Erro
 /// 接收到其余类型都直接返回错误
 ///
 fn get_node_state_from_host(host_info: &str) -> Result<MysqlState, Box<dyn Error>> {
-//    let mut conn = conn(host_info)?;
-//    //let mut buf: Vec<u8> = vec![];
-//    //buf.push(0xfe);
-//    send_value_packet(&mut conn, &procotol::Null::new(), MyProtocol::MysqlCheck)?;
-//    //send_packet(&buf, &mut conn)?;
-//    let packet = rec_packet(&mut conn)?;
     let response_packet = MyProtocol::MysqlCheck.get_packet(&host_info.to_string())?;
     //let type_code = MyProtocol::new(&packet[0]);
     match response_packet.type_code {
         MyProtocol::MysqlCheck => {
             let value: MysqlState = serde_json::from_slice(&response_packet.value)?;
             return Ok(value);
+        }
+        MyProtocol::Error => {
+            let err: ReponseErr = serde_json::from_slice(&response_packet.value)?;
+            return Err(err.err.into());
         }
         _ => {
             let a = format!("return invalid type code: {:?}",&response_packet.type_code);

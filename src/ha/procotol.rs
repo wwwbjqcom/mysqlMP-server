@@ -337,6 +337,11 @@ pub struct MysqlState {
     pub master_log_file: String,
     pub read_master_log_pos: usize,
     pub exec_master_log_pos: usize,
+    pub read_only: bool,
+    pub version: String,
+    pub executed_gtid_set: String,
+    pub innodb_flush_log_at_trx_commit: usize,
+    pub sync_binlog: usize,
     pub error: String
 }
 
