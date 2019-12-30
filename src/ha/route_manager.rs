@@ -5,10 +5,10 @@
 use actix_web::web;
 use crate::storage::rocks::{DbInfo, CfNameTypeCode, KeyValue, PrefixTypeCode};
 use std::{time, thread};
-use crate::ha::procotol::{HostInfoValue, MysqlState};
+use crate::ha::procotol::{MysqlState};
 use std::error::Error;
 use crate::ha::nodes_manager::CheckState;
-use crate::storage::opdb::HaChangeLog;
+use crate::storage::opdb::{HaChangeLog, HostInfoValue};
 use serde::{Serialize, Deserialize};
 
 ///

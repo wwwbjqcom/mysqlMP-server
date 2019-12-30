@@ -6,10 +6,11 @@
 use actix_web::{web};
 use std::sync::{mpsc, Arc, Mutex};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
+use crate::storage::opdb::HostInfoValue;
 use crate::ha::{DownNodeInfo, get_node_state_from_host};
 use crate::ha::procotol;
 use std::error::Error;
-use crate::ha::procotol::{HostInfoValue, DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo, RowsSql};
+use crate::ha::procotol::{DownNodeCheckStatus, MyProtocol, ReplicationState, DownNodeCheck, MysqlState, ChangeMasterInfo, RecoveryInfo, HostInfoValueGetAllState, BinlogValue, SyncBinlogInfo, RowsSql};
 use std::{thread, time};
 use std::time::Duration;
 use serde::{Serialize, Deserialize};
@@ -668,7 +669,8 @@ impl SwitchForNodes {
             return Err(err.into());
         }
         check_mainatain(db, &self.host)?;
-        let role = crate::webroute::route::get_nodes_role(db, &self.host);
+        //let role = crate::webroute::route::get_nodes_role(db, &self.host);
+        let role = node_state.get_role(db)?;
         if role == String::from("master"){
             let a = String::from("do not allow the current master to perform this operation");
             return  Err(a.into());
@@ -685,7 +687,8 @@ impl SwitchForNodes {
                 continue;
             }
             if value.cluster_name == self.cluster_name {
-                let role = crate::webroute::route::get_nodes_role(db, &row.key);
+                //let role = crate::webroute::route::get_nodes_role(db, &row.key);
+                let role = value.get_role(db)?;
                 let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role.clone());
                 check_mainatain(db, &v.host)?;
                 if role == String::from("master"){

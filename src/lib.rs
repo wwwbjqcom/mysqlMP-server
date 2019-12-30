@@ -143,10 +143,10 @@ pub fn start_web(db: DbInfo) {
     });
 
     //route信息管理线程
-    let c = rcdb.clone();
-    thread::spawn(move||{
-        ha::route_manager::manager(c);
-    });
+//    let c = rcdb.clone();
+//    thread::spawn(move||{
+//        ha::route_manager::manager(c);
+//    });
 
 
     //web服务
@@ -188,7 +188,7 @@ pub fn start_web(db: DbInfo) {
                     )
             )
             .service(
-                web::resource("/pages/DBHA/marksqlinfo")
+                web::resource("/marksqlinfo")
                     .route(
                         web::route()
                             .guard(guard::Post())
@@ -197,7 +197,7 @@ pub fn start_web(db: DbInfo) {
                     )
             )
             .service(
-                web::resource("/pages/DBHA/pushsqlinfo")
+                web::resource("/pushsqlinfo")
                     .route(
                         web::route()
                             .guard(guard::Post())
@@ -205,23 +205,50 @@ pub fn start_web(db: DbInfo) {
                             .to(webroute::route::push_sql)
                     )
             )
+            .service(
+                web::resource("/getmonitorinfo")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_cluster_monitor_status)
+                    )
+            )
+            .service(
+                web::resource("/getclusternamelist")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_cluster_list)
+                    )
+            )
+            .service(
+                web::resource("/getdbhadata")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_cluster_node_info)
+                    )
+            )
+            //.route("/getdbhadata", web::post().to(webroute::new_route::get_cluster_node_info))
             .route("/", web::get().to(webroute::index))
             .route("/login", web::post().to(webroute::route::login))
-            .route("/pages/DBHA/getsqls",web::post().to(webroute::route::get_rollback_sql))
+            .route("/getsqls",web::post().to(webroute::route::get_rollback_sql))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/pages/DBHA/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/pages/logs/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/pages/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/pages/DBHA/routeinfo", web::post().to(webroute::route::get_all_route_info))
+            .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
+            .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
+            .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
+            .route("/routeinfo", web::post().to(webroute::route::get_all_route_info))
             .route("/createuser", web::post().to(webroute::route::create_user))
-            .route("/pages/edituser", web::post().to(webroute::route::edit_user))
-            .route("/pages/DBHA/import", web::post().to(webroute::route::import_mysql_info))
-            .route("/pages/DBHA/getallmysqlinfo", web::post().to(webroute::route::get_all_mysql_info))
-            .route("/pages/DBHA/editnode", web::post().to(webroute::route::edit_nodes))
-            .route("/pages/DBHA/deletenode", web::post().to(webroute::route::delete_node))
-            .route("/pages/DBHA/setmaintain", web::post().to(webroute::route::edit_maintain))
-            .route("/pages/DBHA/switch", web::post().to(webroute::route::switch))
-            .route("/pages/logs/getlogdata", web::post().to(webroute::route::switchlog))
+            .route("/edituser", web::post().to(webroute::route::edit_user))
+            .route("/import", web::post().to(webroute::route::import_mysql_info))
+            .route("/editnode", web::post().to(webroute::route::edit_nodes))
+            .route("/deletenode", web::post().to(webroute::route::delete_node))
+            .route("/setmaintain", web::post().to(webroute::route::edit_maintain))
+            .route("/switch", web::post().to(webroute::route::switch))
+            .route("/getlogdata", web::post().to(webroute::route::switchlog))
             //.route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::mark_sql))
             //.route("/pages/DBHA/pushsqlinfo", web::post().to(webroute::route::push_sql))
             .route("/{filename:.*}", web::get().to(webroute::index_static))

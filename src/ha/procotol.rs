@@ -7,8 +7,7 @@ use serde::Deserialize;
 use std::net::TcpStream;
 use std::error::Error;
 use std::io::{Read, Write};
-use actix_web::{web};
-use crate::webroute::route::{EditInfo, EditMainTain};
+use crate::storage::opdb::HostInfoValue;
 use crate::ha::nodes_manager::SlaveInfo;
 
 #[derive(Debug, Serialize)]
@@ -342,7 +341,9 @@ pub struct MysqlState {
     pub executed_gtid_set: String,
     pub innodb_flush_log_at_trx_commit: usize,
     pub sync_binlog: usize,
-    pub error: String
+    pub server_id: usize,
+    pub event_scheduler: String,
+    pub sql_error: String
 }
 
 ///
@@ -484,7 +485,6 @@ pub struct GetRecoveryInfo {
     pub gtid: String,
 }
 
-
 ///
 ///用于宕机恢复旧master回滚，该结构体是从client发回的回滚等数据信息
 ///
@@ -504,40 +504,8 @@ pub struct RowsSql {
     pub etype: String,          //返回节点执行sql的类型， rollback或者append
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HostInfoValue {
-    pub host: String,   //127.0.0.1:3306
-    pub dbport: usize,  //default 3306
-    pub rtype: String,  //db、route
-    pub cluster_name: String,   //集群名称,route类型默认default
-    pub online: bool,   //db是否在线， true、false
-    pub insert_time: i64,
-    pub update_time: i64,
-    pub maintain: bool, //是否处于维护模式，true、false
-}
-
-impl HostInfoValue {
-    pub fn edit(&mut self, info: &web::Form<EditInfo>) {
-        self.host = info.host.clone();
-        self.dbport = info.dbport.clone();
-        self.cluster_name = info.cluster_name.clone();
-        self.update_time = crate::timestamp();
-        self.rtype = info.rtype.clone();
-    }
-
-    pub fn maintain(&mut self, info: &web::Form<EditMainTain>) {
-        if info.maintain {
-            self.maintain = false;
-        }else {
-            self.maintain = true;
-        }
-        self.update_time = crate::timestamp();
-    }
-}
-
 ///
-/// 用于web拉取节点信息
+/// 用于节点切换中保存节点信息
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HostInfoValueGetAllState {
     pub host: String,   //127.0.0.1:3306
@@ -548,49 +516,6 @@ pub struct HostInfoValueGetAllState {
     pub role: String,   //主从角色
     pub cluster_name: String,   //集群名称
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ClusterHostInfoValue {
-    pub cluster_name: String,
-    pub difference_data: bool,
-    pub node_list: Vec<HostInfoValueGetAllState>,
-}
-
-impl ClusterHostInfoValue {
-    pub fn new(cluster_name: String) -> ClusterHostInfoValue {
-        ClusterHostInfoValue{ cluster_name, difference_data: false, node_list: vec![] }
-    }
-
-    pub fn add_node(&mut self,node_info: HostInfoValueGetAllState, difference: bool) {
-        self.node_list.push(node_info);
-        if difference{self.difference_data = difference.clone()}
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct AllNodeInfo {
-    pub rows: Vec<ClusterHostInfoValue>
-}
-
-impl AllNodeInfo {
-    pub fn new() -> AllNodeInfo {
-        AllNodeInfo{ rows: vec![] }
-    }
-
-    pub fn cluster_op(&mut self, cluster_name: String, node_info: HostInfoValueGetAllState, difference: bool) {
-        for node in &mut self.rows {
-            if node.cluster_name == cluster_name {
-                node.add_node(node_info, difference);
-                return;
-            }
-        }
-        let mut cluster_info = ClusterHostInfoValue::new(cluster_name);
-        cluster_info.add_node(node_info, difference);
-        self.rows.push(cluster_info);
-    }
-}
-
-
 
 impl HostInfoValueGetAllState {
     pub fn new(host_info: &HostInfoValue,role: String) -> HostInfoValueGetAllState {

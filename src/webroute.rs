@@ -3,6 +3,9 @@
 @datetime: 2019/11/15
 */
 pub mod route;
+pub mod new_route;
+pub mod op_value;
+pub mod response;
 
 use actix_web::{http::header, HttpRequest, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
@@ -38,7 +41,7 @@ pub fn index_file(session: Session) -> Result<NamedFile>{
     if !session_check(session).unwrap(){
         return login();
     }
-    Ok(NamedFile::open("index.html")?)
+    Ok(NamedFile::open("index2.html")?)
 }
 
 pub fn session_check(session: Session) -> Result<bool, Box<dyn Error>> {

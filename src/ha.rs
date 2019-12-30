@@ -5,7 +5,8 @@
 
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use std::{thread, time};
-use crate::ha::procotol::{HostInfoValue, MyProtocol, MysqlState, ReponseErr};
+use crate::ha::procotol::{MyProtocol, MysqlState, ReponseErr};
+use crate::storage::opdb::HostInfoValue;
 use std::error::Error;
 use std::net::{TcpStream, SocketAddr, IpAddr, Ipv4Addr};
 use std::time::Duration;
@@ -75,9 +76,10 @@ impl NodesInfo {
     ///
     fn update_nodes_state(&mut self, db: &web::Data<DbInfo>, nodes_state: &MysqlState) -> Result<(), Box<dyn Error>> {
         if self.value.online {
-            let value = serde_json::to_string(nodes_state)?;
-            let a = KeyValue{key: (&self.key).parse()?, value };
-            db.put(&a, &CfNameTypeCode::NodesState.get())?;
+//            let value = serde_json::to_string(nodes_state)?;
+//            let a = KeyValue{key: (&self.key).parse()?, value };
+//            db.put(&a, &CfNameTypeCode::NodesState.get())?;
+            nodes_state.save(db, &self.key)?;
         }
         Ok(())
     }

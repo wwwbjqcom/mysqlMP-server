@@ -7,11 +7,12 @@ use actix_session::{ Session};
 use serde::{Deserialize, Serialize};
 use crate::storage;
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
-use crate::ha::procotol::{MysqlState, HostInfoValue, AllNodeInfo, CommandSql, MyProtocol};
+use crate::ha::procotol::{MysqlState, CommandSql, MyProtocol};
 use std::error::Error;
 use crate::ha::nodes_manager::{SwitchForNodes, DifferenceSql, SqlRelation};
-use crate::storage::opdb::{HaChangeLog, UserInfo};
+use crate::storage::opdb::{HaChangeLog, UserInfo, HostInfoValue};
 use crate::ha::route_manager::RouteInfo;
+use crate::webroute::response::{response_state, response_value, ResponseState};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,113 +23,12 @@ pub struct HostInfo {
     pub cluster_name: String   //集群名称
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct State {
-    pub status: u8,
-    pub value: String
-}
-
-impl State {
-    pub fn new() -> HttpResponse {
-        HttpResponse::Ok()
-            .json(State {
-                status: 1,
-                value: "OK".parse().unwrap()
-            })
-    }
-}
-
-
 /// extract `import host info` using serde
 pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> HttpResponse {
     let state = storage::opdb::insert_mysql_host_info(data, &info);
-    return response(state);
+    return response_state(state);
 }
 
-
-struct CheckSqlInfo{
-    clusters: Vec<String>   //存在未执行sql的集群名
-}
-impl CheckSqlInfo {
-    fn new(db: &web::Data<DbInfo>) -> Result<CheckSqlInfo, Box<dyn Error>>{
-        let mut tmp = vec![];
-        let prefix = PrefixTypeCode::RollBackSql.prefix();
-        let sql_result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
-        for info in &sql_result{
-            if !info.key.starts_with(&prefix){continue;}
-            let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
-            if &value.status == &0{
-                if value.sqls.len() > 0{
-                    tmp.push(value.cluster.clone());
-                }
-            }
-        }
-        Ok(CheckSqlInfo{ clusters: tmp })
-    }
-
-    fn check(&self, cluster: &String) -> bool {
-        for cl in &self.clusters {
-            if cl == cluster {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-
-/// extract `export mysql host info` using serde
-pub fn get_all_mysql_info(data: web::Data<DbInfo>) -> HttpResponse {
-    let cf_name = String::from("Ha_nodes_info");
-    let result = data.iterator(&cf_name,&String::from(""));
-    let ck_sql_info = CheckSqlInfo::new(&data);
-    match ck_sql_info {
-        Ok(rc) => {
-            let mut rows = AllNodeInfo::new();
-            match result {
-                Ok(v) => {
-                    for row in v {
-                        let role = get_nodes_role(&data, &row.key);
-                        let value: HostInfoValue = serde_json::from_str(&row.value).unwrap();
-
-                        let difference = rc.check(&value.cluster_name);
-                        let v = crate::ha::procotol::HostInfoValueGetAllState::new(&value, role);
-                        if &value.rtype == &String::from("route") {
-                            rows.cluster_op(String::from("route"), v, difference);
-                        }else {
-                            rows.cluster_op(value.cluster_name, v, difference);
-                        }
-                        //rows.push(serde_json::json!(v));
-                    }
-                    return response_value(&rows.rows);
-                }
-                Err(e) => {
-                    return HttpReponseErr::new(e.to_string());
-                }
-            }
-        }
-        Err(e) => {
-            return HttpReponseErr::new(e.to_string());
-        }
-    }
-
-}
-
-pub fn get_nodes_role(data: &web::Data<DbInfo>, key: &String) -> String {
-    let cf_name = String::from("Nodes_state");
-    let v = data.get(key, &cf_name);
-    match v {
-        Ok(value) => {
-            if value.value.len() > 0 {
-                let re: MysqlState = serde_json::from_str(&value.value).unwrap();
-                return re.role;
-            }
-        }
-        Err(e) => {
-            info!("{}",e.to_string());
-        }
-    }
-    return String::from("");
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct EditInfo {
@@ -151,10 +51,10 @@ pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Form<EditInfo>) -> HttpRes
             let value = serde_json::to_string(&db_value).unwrap();
             let row = KeyValue::new(&key, &value);
             let a = data.put(&row, &cf_name);
-            return response(a);
+            return response_state(a);
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -174,7 +74,7 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
             let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
             if cur_status.role == "master".to_string(){
                 if cur_status.online{
-                    return HttpReponseErr::new("the master node cannot be set to maintenance mode".to_string());
+                    return ResponseState::error("the master node cannot be set to maintenance mode".to_string());
                 }
             }
         }
@@ -190,10 +90,10 @@ pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> 
             let value = serde_json::to_string(&db_value).unwrap();
             let row = KeyValue::new(&key, &value);
             let a = data.put(&row, &cf_name);
-            return response(a);
+            return response_state(a);
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -211,14 +111,14 @@ impl DeleteNode {
             Ok(v) => {
                 let value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
                 if value.maintain {
-                    return response(data.delete(&self.host, &cf_name));
+                    return response_state(data.delete(&self.host, &cf_name));
                 }else {
                     let err = String::from("the maintenance mode node is only deleted");
-                    return HttpReponseErr::new(err);
+                    return ResponseState::error(err);
                 }
             }
             Err(e) => {
-                return HttpReponseErr::new(e.to_string());
+                return ResponseState::error(e.to_string());
             }
         }
     }
@@ -238,24 +138,7 @@ pub struct SwitchInfo {
 pub fn switch(data: web::Data<DbInfo>, info: web::Form<SwitchInfo>) -> HttpResponse {
     info!("manually switch {} to master", info.host);
     let mut switch_info = SwitchForNodes::new(&info.host);
-    return response(switch_info.switch(&data));
-}
-
-
-fn response(a: Result<(), Box<dyn Error>>) -> HttpResponse {
-    match a {
-        Ok(()) => {
-            return State::new();
-        },
-        Err(e) => {
-            return HttpReponseErr::new(e.to_string());
-        }
-    }
-}
-
-fn response_value<F: Serialize>(value: &F) -> HttpResponse {
-    HttpResponse::Ok()
-        .json(value)
+    return response_state(switch_info.switch(&data));
 }
 
 ///
@@ -267,13 +150,12 @@ pub struct RowLog {
 }
 #[derive(Deserialize, Serialize)]
 pub struct SwitchLog{
-    status: usize,
     log_data: Vec<RowLog>
 }
 
 impl SwitchLog {
     fn new() -> SwitchLog {
-        SwitchLog{ status: 1, log_data: vec![] }
+        SwitchLog{log_data: vec![] }
     }
 
     fn get_all(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
@@ -301,39 +183,11 @@ pub fn switchlog(data: web::Data<DbInfo>) -> HttpResponse {
 
     let mut switch_log = SwitchLog::new();
     if let Err(e) = switch_log.get_all(&data) {
-        return HttpReponseErr::new(e.to_string());
+        return ResponseState::error(e.to_string());
     }
     return response_value(&switch_log);
 }
 
-
-///
-/// 错误信息
-///
-#[derive(Serialize, Deserialize)]
-pub struct HttpReponseErr{
-    pub status: u8,
-    pub err: String
-}
-
-impl HttpReponseErr {
-    pub fn new(err: String) -> HttpResponse {
-        HttpResponse::Ok()
-            .json(HttpReponseErr {
-                status: 0,
-                err
-            })
-    }
-
-    pub fn no_session() -> HttpResponse {
-        let err = "no seesion, please longin".to_string();
-        HttpResponse::Ok()
-            .json(HttpReponseErr {
-                status: 2,
-                err
-            })
-    }
-}
 
 ///
 /// 返回路由信息
@@ -399,7 +253,7 @@ pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> H
             return response_value(&rinfo);
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -412,7 +266,7 @@ pub fn get_all_route_info(db: web::Data<DbInfo>) -> HttpResponse {
             return response_value(&rinfo);
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -432,13 +286,13 @@ pub fn create_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> Http
         Ok(tmp) => {
             if tmp.value.len() > 0 {
                 let err = format!("user :{} already exists ", &info.user_name);
-                return HttpReponseErr::new(err);
+                return ResponseState::error(err);
             }
             let user_info = crate::storage::opdb::UserInfo::new(&info);
-            return response(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
+            return response_state(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -452,13 +306,13 @@ pub fn edit_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> HttpRe
         Ok(tmp) => {
             if tmp.value.len() > 0 {
                 let user_info = crate::storage::opdb::UserInfo::new(&info);
-                return response(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
+                return response_state(db.prefix_put(&PrefixTypeCode::UserInfo, &info.user_name, &user_info));
             }
             let err = format!("user :{} not exists ", &info.user_name);
-            return HttpReponseErr::new(err);
+            return ResponseState::error(err);
         }
         Err(e) => {
-            return HttpReponseErr::new(e.to_string());
+            return ResponseState::error(e.to_string());
         }
     }
 }
@@ -472,18 +326,18 @@ pub fn login(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>, session: Sess
         Ok(result) => {
             if result.value.len() == 0 {
                 let err = format!("user: {} does not exist", &info.user_name);
-                return Ok(HttpReponseErr::new(err));
+                return Ok(ResponseState::error(err));
             }
             let userinfo: UserInfo = serde_json::from_str(&result.value)?;
             if userinfo.password != info.password {
                 let err = format!("wrong password");
-                return Ok(HttpReponseErr::new(err));
+                return Ok(ResponseState::error(err));
             }
             session.set("username", &info.user_name)?;
-            return Ok(State::new());
+            return Ok(ResponseState::ok());
         }
         Err(e) => {
-            return Ok(HttpReponseErr::new(e.to_string()));
+            return Ok(ResponseState::error(e.to_string()));
         }
     }
 }
@@ -494,7 +348,6 @@ pub struct GetUserInfo{
     pub hook_id: String,
     pub create_time: i64,
     pub update_time: i64,
-    pub status: u8
 }
 
 impl GetUserInfo {
@@ -504,9 +357,7 @@ impl GetUserInfo {
             hook_id : user_info.hook_id.clone(),
             create_time: user_info.create_time.clone(),
             update_time: user_info.update_time.clone(),
-            status: 1
         }
-
     }
 }
 
@@ -522,11 +373,11 @@ pub fn get_user_info(db: web::Data<DbInfo>, session: Session) -> actix_web::Resu
                 return Ok(response_value(&get_info));
             }
             Err(e) => {
-                return Ok(HttpReponseErr::new(e.to_string()));
+                return Ok(ResponseState::error(e.to_string()));
             }
         }
     }
-    Ok(HttpReponseErr::no_session())
+    Ok(ResponseState::no_session())
 }
 
 
@@ -572,13 +423,12 @@ impl ResponseSql{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseAllSql {
-    status: u8,
     total: usize,
     sql_info: Vec<ResponseSql>
 }
 impl ResponseAllSql {
     fn new() -> ResponseAllSql {
-        ResponseAllSql{ status: 1, total: 0, sql_info: vec![] }
+        ResponseAllSql{total: 0, sql_info: vec![] }
     }
 
     fn init_sql_info(&mut self, db: &web::Data<DbInfo>, info: &GetSql) -> Result<(), Box<dyn Error>> {
@@ -619,7 +469,7 @@ pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix
     //info!("{:?}", &info);
     let mut re = ResponseAllSql::new();
     if let Err(e) = re.init_sql_info(&db, &info){
-        return Ok(HttpReponseErr::new(e.to_string()));
+        return Ok(ResponseState::error(e.to_string()));
     };
     Ok(response_value(&re))
 }
@@ -745,10 +595,10 @@ pub fn push_sql(db: web::Data<DbInfo>, info: web::Json<PushSqlAll>) -> HttpRespo
     }
     if let Err(e) = extra.execute(&db){
         let err = format!("success_cluster: {:?}, err: {:?}", &extra.success_cluster, e.to_string());
-        return HttpReponseErr::new(err);
+        return ResponseState::error(err);
     };
 
-    State::new()
+    ResponseState::ok()
 }
 
 
@@ -780,10 +630,10 @@ pub fn mark_sql(db: web::Data<DbInfo>, info: web::Json<MarkSqlAll>) -> HttpRespo
     for mark in &info.sql_info{
         if let Err(e) = mark.set_mark(&db){
             let err = format!("info: {:?} {}", &mark, e.to_string());
-            return HttpReponseErr::new(err);
+            return ResponseState::error(err);
         }
     }
-    State::new()
+    ResponseState::ok()
 }
 
 
