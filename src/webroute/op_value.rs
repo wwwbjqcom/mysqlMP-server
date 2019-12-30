@@ -104,7 +104,7 @@ impl ClusterSwitchInfo{
         ClusterSwitchInfo{
             switch_total: 0,
             last_switch_time: 0,
-            last_switch_state: false
+            last_switch_state: true
         }
     }
     fn init(&mut self, db: &web::Data<DbInfo>, cl_info: &ClusterNodeInfo) -> Result<(), Box<dyn Error>>{
@@ -144,11 +144,8 @@ impl ClusterMonitorInfo{
     pub fn init(&mut self, db: &web::Data<DbInfo>, cluster_name: &String) -> Result<(), Box<dyn Error>> {
         let mut cl_info = ClusterNodeInfo::new(cluster_name);
         cl_info.init(db)?;
-        info!("aa");
         self.init_monitor_status(&cl_info);
-        info!("bb");
         self.init_cluster_info(db, &cl_info)?;
-        info!("bb");
         self.init_switch_log_info(db, &cl_info)?;
         Ok(())
     }
