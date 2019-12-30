@@ -19,12 +19,12 @@ use crate::webroute::response::{response_state, response_value, ResponseState};
 pub struct HostInfo {
     pub host: String,   //127.0.0.1:3306
     pub rtype: String,  //db、route
-    pub dbport: String, //default 3306
+    pub dbport: usize, //default 3306
     pub cluster_name: String   //集群名称
 }
 
 /// extract `import host info` using serde
-pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Form<HostInfo>) -> HttpResponse {
+pub fn import_mysql_info(data: web::Data<DbInfo>, info: web::Json<HostInfo>) -> HttpResponse {
     let state = storage::opdb::insert_mysql_host_info(data, &info);
     return response_state(state);
 }
@@ -40,7 +40,7 @@ pub struct EditInfo {
     pub online: bool,
 }
 
-pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Form<EditInfo>) -> HttpResponse {
+pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Json<EditInfo>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let key = &info.host;
     let cur_value = data.get(key, &cf_name);
@@ -65,7 +65,7 @@ pub struct EditMainTain{
     pub maintain: bool
 }
 
-pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Form<EditMainTain>) -> HttpResponse {
+pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Json<EditMainTain>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let key = &info.host;
     //检查master状态
@@ -124,7 +124,7 @@ impl DeleteNode {
     }
 }
 
-pub fn delete_node(data: web::Data<DbInfo>, info: web::Form<DeleteNode>) -> HttpResponse {
+pub fn delete_node(data: web::Data<DbInfo>, info: web::Json<DeleteNode>) -> HttpResponse {
     return info.exec(&data);
 }
 
@@ -135,7 +135,7 @@ pub fn delete_node(data: web::Data<DbInfo>, info: web::Form<DeleteNode>) -> Http
 pub struct SwitchInfo {
     pub host: String,
 }
-pub fn switch(data: web::Data<DbInfo>, info: web::Form<SwitchInfo>) -> HttpResponse {
+pub fn switch(data: web::Data<DbInfo>, info: web::Json<SwitchInfo>) -> HttpResponse {
     info!("manually switch {} to master", info.host);
     let mut switch_info = SwitchForNodes::new(&info.host);
     return response_state(switch_info.switch(&data));
@@ -300,7 +300,7 @@ pub fn create_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> Http
 
 ///
 /// 编辑用户信息
-pub fn edit_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> HttpResponse {
+pub fn edit_user(db: web::Data<DbInfo>, info: web::Json<PostUserInfo>) -> HttpResponse {
     let result =db.prefix_get(&PrefixTypeCode::UserInfo, &info.user_name);
     match result {
         Ok(tmp) => {
@@ -320,7 +320,7 @@ pub fn edit_user(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>) -> HttpRe
 
 ///
 /// 登陆
-pub fn login(db: web::Data<DbInfo>, info: web::Form<PostUserInfo>, session: Session) -> actix_web::Result<HttpResponse> {
+pub fn login(db: web::Data<DbInfo>, info: web::Json<PostUserInfo>, session: Session) -> actix_web::Result<HttpResponse> {
     let result =db.prefix_get(&PrefixTypeCode::UserInfo, &info.user_name);
     match result {
         Ok(result) => {
@@ -434,28 +434,40 @@ impl ResponseAllSql {
     fn init_sql_info(&mut self, db: &web::Data<DbInfo>, info: &GetSql) -> Result<(), Box<dyn Error>> {
         let mut sql_vec = vec![];
         let mut total = 0 as usize;
-        let prefix = PrefixTypeCode::RollBackSql.prefix();
-        let result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
-        for row in result {
-            //info!("{:?}", &row);
-            if row.value.len() == 0 {continue;}
-            if info.cluster_name.len() > 0 {
-                let tmp = format!("{}:{}", &prefix, &info.cluster_name);
-                if !row.key.starts_with(&tmp){
-                    continue;
-                }
-            }
 
-            if row.key.starts_with(&prefix){
-                let value: DifferenceSql = serde_json::from_str(&row.value).unwrap();
-                let mut res_all = ResponseSql::new(&value);
-                for sql_info in &value.sqls{
-                    res_all.append_sql_info(sql_info);
-                    sql_vec.push(res_all.clone());
-                    total += 1;
-                }
+
+        let result = db.get_rollback_sql(&info.cluster_name)?;
+        for row in &result{
+            let mut res_all = ResponseSql::new(&row.value);
+            for sql_info in &row.value.sqls{
+                res_all.append_sql_info(sql_info);
+                sql_vec.push(res_all.clone());
+                total += 1;
             }
         }
+
+//        let prefix = PrefixTypeCode::RollBackSql.prefix();
+//        let result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+//        for row in result {
+//            //info!("{:?}", &row);
+//            if row.value.len() == 0 {continue;}
+//            if info.cluster_name.len() > 0 {
+//                let tmp = format!("{}:{}", &prefix, &info.cluster_name);
+//                if !row.key.starts_with(&tmp){
+//                    continue;
+//                }
+//            }
+//
+//            if row.key.starts_with(&prefix){
+//                let value: DifferenceSql = serde_json::from_str(&row.value).unwrap();
+//                let mut res_all = ResponseSql::new(&value);
+//                for sql_info in &value.sqls{
+//                    res_all.append_sql_info(sql_info);
+//                    sql_vec.push(res_all.clone());
+//                    total += 1;
+//                }
+//            }
+//        }
         if sql_vec.len()>0{
             sql_vec.sort_by(|a, b| b.time.cmp(&a.time));
         }
@@ -465,7 +477,7 @@ impl ResponseAllSql {
     }
 }
 
-pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Form<GetSql>) -> actix_web::Result<HttpResponse> {
+pub fn get_rollback_sql(db: web::Data<DbInfo>, info: web::Json<GetSql>) -> actix_web::Result<HttpResponse> {
     //info!("{:?}", &info);
     let mut re = ResponseAllSql::new();
     if let Err(e) = re.init_sql_info(&db, &info){

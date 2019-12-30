@@ -143,11 +143,16 @@ pub fn start_web(db: DbInfo) {
     });
 
     //route信息管理线程
-//    let c = rcdb.clone();
-//    thread::spawn(move||{
-//        ha::route_manager::manager(c);
-//    });
+    let c = rcdb.clone();
+    thread::spawn(move||{
+        ha::route_manager::manager(c);
+    });
 
+    //管理线程
+    let c = rcdb.clone();
+    thread::spawn(move||{
+        ha::sys_manager::manager(c);
+    });
 
     //web服务
     let mut builder =
@@ -232,22 +237,103 @@ pub fn start_web(db: DbInfo) {
                             .to(webroute::new_route::get_cluster_node_info)
                     )
             )
+            .service(
+                web::resource("/dbhadetail")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_cluster_node_info)
+                    )
+            )
+            .service(
+                web::resource("/getsqls")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::get_rollback_sql)
+                    )
+            )
+            .service(
+                web::resource("/import")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::import_mysql_info)
+                    )
+            )
+            .service(
+                web::resource("/editnode")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::edit_nodes)
+                    )
+            )
+            .service(
+                web::resource("/deletenode")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::delete_node)
+                    )
+            )
+            .service(
+                web::resource("/setmaintain")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::edit_maintain)
+                    )
+            )
+            .service(
+                web::resource("/switch")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::switch)
+                    )
+            )
+            .service(
+                web::resource("/edituser")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::edit_user)
+                    )
+            )
+            .service(
+                web::resource("/login")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::login)
+                    )
+            )
             //.route("/getdbhadata", web::post().to(webroute::new_route::get_cluster_node_info))
             .route("/", web::get().to(webroute::index))
-            .route("/login", web::post().to(webroute::route::login))
-            .route("/getsqls",web::post().to(webroute::route::get_rollback_sql))
+            //.route("/login", web::post().to(webroute::route::login))
+            //.route("/getsqls",web::post().to(webroute::route::get_rollback_sql))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/routeinfo", web::post().to(webroute::route::get_all_route_info))
             .route("/createuser", web::post().to(webroute::route::create_user))
-            .route("/edituser", web::post().to(webroute::route::edit_user))
-            .route("/import", web::post().to(webroute::route::import_mysql_info))
-            .route("/editnode", web::post().to(webroute::route::edit_nodes))
-            .route("/deletenode", web::post().to(webroute::route::delete_node))
-            .route("/setmaintain", web::post().to(webroute::route::edit_maintain))
-            .route("/switch", web::post().to(webroute::route::switch))
+            //.route("/edituser", web::post().to(webroute::route::edit_user))
+            //.route("/import", web::post().to(webroute::route::import_mysql_info))
+            //.route("/editnode", web::post().to(webroute::route::edit_nodes))
+            //.route("/deletenode", web::post().to(webroute::route::delete_node))
+            //.route("/setmaintain", web::post().to(webroute::route::edit_maintain))
+            //.route("/switch", web::post().to(webroute::route::switch))
             .route("/getlogdata", web::post().to(webroute::route::switchlog))
             //.route("/pages/DBHA/marksqlinfo", web::post().to(webroute::route::mark_sql))
             //.route("/pages/DBHA/pushsqlinfo", web::post().to(webroute::route::push_sql))

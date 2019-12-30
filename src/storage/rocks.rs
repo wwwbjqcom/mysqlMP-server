@@ -9,6 +9,7 @@ use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
 use crate::storage::opdb::UserInfo;
 use crate::webroute::route::PostUserInfo;
+use crate::ha::nodes_manager::DifferenceSql;
 
 
 pub enum PrefixTypeCode {
@@ -56,6 +57,11 @@ impl CfNameTypeCode {
     }
 }
 
+#[derive(Debug)]
+pub struct RowValue<T: Serialize>{
+    pub key: String,
+    pub value: T
+}
 
 #[derive(Deserialize, Debug, Serialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct KeyValue{
@@ -225,6 +231,21 @@ impl DbInfo {
         self.prefix_put(&PrefixTypeCode::UserInfo, &userinfo.user_name, &userinfo)?;
         Ok(())
     }
+
+
+    pub fn get_rollback_sql(&self, prefix: &String) -> Result<Vec<RowValue<DifferenceSql>>, Box<dyn Error>>{
+        let prefix = format!("{}:{}", PrefixTypeCode::RollBackSql.prefix(), prefix);
+        let mut rw = vec![];
+        let result = self.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+        for row in &result{
+            if !row.key.starts_with(&prefix){continue;}
+            let value: DifferenceSql = serde_json::from_str(&row.value)?;
+            let r = RowValue{ key: row.key.clone(), value };
+            rw.push(r);
+        }
+        Ok(rw)
+    }
+
 }
 
 fn init_db(cf_names: &Vec<String>) -> Result<DB, Box<dyn Error>> {

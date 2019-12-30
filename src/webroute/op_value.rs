@@ -70,17 +70,25 @@ impl ClusterInfo{
     }
 
     fn check_difference_data(&mut self, db: &web::Data<DbInfo>, cl_info: &ClusterNodeInfo) -> Result<(), Box<dyn Error>>{
-        let prefix = format!("{}:{}",PrefixTypeCode::RollBackSql.prefix(), cl_info.cluster_name);
-        let sql_result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
-        for info in &sql_result{
-            if !info.key.starts_with(&prefix){continue;}
-            let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
-            if &value.status == &0{
-                if value.sqls.len() > 0{
+        let result = db.get_rollback_sql(&cl_info.cluster_name)?;
+        for row in &result{
+            if row.value.status == 0{
+                if row.value.sqls.len() > 0{
                     self.difference_data = true;
                 }
             }
         }
+//        let prefix = format!("{}:{}",PrefixTypeCode::RollBackSql.prefix(), cl_info.cluster_name);
+//        let sql_result = db.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+//        for info in &sql_result{
+//            if !info.key.starts_with(&prefix){continue;}
+//            let value: DifferenceSql = serde_json::from_str(&info.value).unwrap();
+//            if &value.status == &0{
+//                if value.sqls.len() > 0{
+//                    self.difference_data = true;
+//                }
+//            }
+//        }
         Ok(())
     }
 }
@@ -136,8 +144,11 @@ impl ClusterMonitorInfo{
     pub fn init(&mut self, db: &web::Data<DbInfo>, cluster_name: &String) -> Result<(), Box<dyn Error>> {
         let mut cl_info = ClusterNodeInfo::new(cluster_name);
         cl_info.init(db)?;
+        info!("aa");
         self.init_monitor_status(&cl_info);
+        info!("bb");
         self.init_cluster_info(db, &cl_info)?;
+        info!("bb");
         self.init_switch_log_info(db, &cl_info)?;
         Ok(())
     }

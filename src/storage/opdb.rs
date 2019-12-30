@@ -7,7 +7,7 @@ use crate::webroute::route::{HostInfo, PostUserInfo, EditInfo, EditMainTain};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
-use crate::ha::nodes_manager::{SlaveInfo};
+use crate::ha::nodes_manager::{SlaveInfo, DifferenceSql};
 use serde::{Serialize, Deserialize};
 use crate::rand_string;
 use crate::ha::procotol::MysqlState;
@@ -17,7 +17,7 @@ use crate::ha::procotol::MysqlState;
 /// mysql node info， insert to rocksdb
 ///
 ///
-pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Form<HostInfo>) -> Result<(), Box<dyn Error>> {
+pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Json<HostInfo>) -> Result<(), Box<dyn Error>> {
     let check_unique = data.get(&info.host, &CfNameTypeCode::HaNodesInfo.get());
     match check_unique {
         Ok(v) => {
@@ -133,7 +133,7 @@ impl HostInfoValue {
         let h = HostInfoValue{
             host: info.host.clone(),
             rtype: info.rtype.clone(),
-            dbport: info.dbport.parse::<usize>()?,
+            dbport: info.dbport.clone(),
             cluster_name: info.cluster_name.clone(),
             online: false,
             insert_time: crate::timestamp(),
@@ -154,7 +154,7 @@ impl HostInfoValue {
 
     ///
     /// 编辑节点信息
-    pub fn edit(&mut self, info: &web::Form<EditInfo>) {
+    pub fn edit(&mut self, info: &web::Json<EditInfo>) {
         self.host = info.host.clone();
         self.dbport = info.dbport.clone();
         self.cluster_name = info.cluster_name.clone();
@@ -164,7 +164,7 @@ impl HostInfoValue {
 
     ///
     /// 设置节点维护模式状态
-    pub fn maintain(&mut self, info: &web::Form<EditMainTain>) {
+    pub fn maintain(&mut self, info: &web::Json<EditMainTain>) {
         if info.maintain {
             self.maintain = false;
         }else {
@@ -181,8 +181,10 @@ impl HostInfoValue {
             let state: MysqlState = serde_json::from_str(&kv.value)?;
             return Ok(state);
         }else {
-            let err = format!("this host: {} no state data", &self.host);
-            return Err(err.into());
+            //let err = format!("this host: {} no state data", &self.host);
+            //return Err(err.into());
+            let state = MysqlState::new();
+            return Ok(state);
         }
     }
 
@@ -193,9 +195,42 @@ impl HostInfoValue {
 }
 
 ///
-/// web端获取节点信息
+/// 获取db中现有的cluster列表
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NodeClusterList{
+    cluster_name_list: Vec<String>
+}
+
+impl NodeClusterList{
+    pub fn new() -> NodeClusterList{
+        NodeClusterList { cluster_name_list: vec![] }
+    }
+
+    pub fn init(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+        let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(), &String::from(""))?;
+        for row in &result{
+            let value: HostInfoValue = serde_json::from_str(&row.value)?;
+            if self.is_exists(&value.cluster_name){continue;}
+            self.cluster_name_list.push(value.cluster_name.clone());
+        }
+        Ok(())
+    }
+    fn is_exists(&self, cluster_name: &String) -> bool {
+        for cl in &self.cluster_name_list {
+            if cl == cluster_name{
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+
+///
+/// node节点信息
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeInfo{
+    pub cluster_name: String,
     pub host: String,
     pub dbport: usize,
     pub online: bool,   //是否在线， true、false
@@ -216,6 +251,7 @@ pub struct NodeInfo{
 impl NodeInfo{
     pub fn new(state: &MysqlState, node: &HostInfoValue) -> NodeInfo {
         NodeInfo{
+            cluster_name: node.cluster_name.clone(),
             host: node.host.clone(),
             dbport: node.dbport.clone(),
             online: node.online.clone(),
@@ -237,7 +273,7 @@ impl NodeInfo{
 }
 
 ///
-/// web端获取集群节点信息
+/// 每个集群节点信息
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ClusterNodeInfo{
     pub cluster_name: String,
@@ -279,6 +315,7 @@ impl MysqlState{
         Ok(())
     }
 }
+
 
 
 

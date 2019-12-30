@@ -345,6 +345,28 @@ pub struct MysqlState {
     pub event_scheduler: String,
     pub sql_error: String
 }
+impl MysqlState{
+    pub fn new() -> MysqlState{
+        MysqlState{
+            online: false,
+            role: "".to_string(),
+            sql_thread: false,
+            io_thread: false,
+            seconds_behind: 0,
+            master_log_file: "".to_string(),
+            read_master_log_pos: 0,
+            exec_master_log_pos: 0,
+            read_only: false,
+            version: "".to_string(),
+            executed_gtid_set: "".to_string(),
+            innodb_flush_log_at_trx_commit: 0,
+            sync_binlog: 0,
+            server_id: 0,
+            event_scheduler: "".to_string(),
+            sql_error: "".to_string()
+        }
+    }
+}
 
 ///
 /// 分发到client请求检查宕机节点状态
