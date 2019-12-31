@@ -169,7 +169,7 @@ impl HostInfoValue {
     ///
     /// 设置节点维护模式状态
     pub fn maintain(&mut self, info: &web::Json<EditMainTain>) {
-        if info.maintain {
+        if info.maintain == "true".to_string() {
             self.maintain = false;
         }else {
             self.maintain = true;

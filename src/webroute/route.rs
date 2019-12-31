@@ -62,7 +62,7 @@ pub fn edit_nodes(data: web::Data<DbInfo>, info: web::Json<EditInfo>) -> HttpRes
 #[derive(Serialize, Deserialize)]
 pub struct EditMainTain{
     pub host: String,
-    pub maintain: bool
+    pub maintain: String
 }
 
 pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Json<EditMainTain>) -> HttpResponse {
