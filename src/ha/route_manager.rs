@@ -135,12 +135,14 @@ impl NodeInfo {
 #[derive(Debug, Clone)]
 struct ClusterNodeInfo{
     cluster_name: String,
+    slave_behind_setting: usize,    //slave 延迟配置
     node_list: Vec<NodeInfo>
 }
 impl ClusterNodeInfo {
-    fn new(ninfo: &NodeInfo) -> ClusterNodeInfo {
+    fn new(ninfo: &NodeInfo, slave_behind: usize) -> ClusterNodeInfo {
         ClusterNodeInfo{
             cluster_name: ninfo.value.cluster_name.clone(),
+            slave_behind_setting: slave_behind,
             node_list: vec![ninfo.clone()]
         }
     }
@@ -148,6 +150,7 @@ impl ClusterNodeInfo {
     fn my_clone(&self) -> ClusterNodeInfo {
         ClusterNodeInfo{
             cluster_name: self.cluster_name.clone(),
+            slave_behind_setting: self.slave_behind_setting.clone(),
             node_list: self.node_list.clone(),
         }
     }
@@ -159,12 +162,7 @@ impl ClusterNodeInfo {
     fn route_check(&self, db: &web::Data<DbInfo>) -> Result<RouteInfo, Box<dyn Error>> {
         let mut route_info = RouteInfo::new(self.cluster_name.clone());
         for node in &self.node_list{
-            //info!("{:?}", node);
-            let status = db.get(&node.key, &CfNameTypeCode::NodesState.get())?;
-            //info!("{:?}", status);
-            if status.value.len() == 0 {continue;};
-            let cur_state: MysqlState = serde_json::from_str(&status.value)?;
-            //info!("{:?}", &cur_state);
+            let cur_state = node.value.get_state(db)?;
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
                 continue;
             };
@@ -249,12 +247,23 @@ impl AllNode {
                     continue 'all;
                 }
             }
-            nodes_info.push(ClusterNodeInfo::new(&ninfo));
+            let mut delay = 100 as usize;
+            let delay_check = db.get_hehind_setting(&ninfo.value.cluster_name);
+            match delay_check {
+                Ok(v) => {
+                    delay = v;
+                }
+                Err(e) => {
+                    info!("check slave behind setting for cluster_name:{} , Error: {:?}", &ninfo.value.cluster_name,e.to_string());
+                }
+            }
+            nodes_info.push(ClusterNodeInfo::new(&ninfo, delay));
         }
         Ok(AllNode{
             nodes: nodes_info
         })
     }
+
 
     ///
     /// 对cluster信息进行循环检查，并把对应route信息写入db

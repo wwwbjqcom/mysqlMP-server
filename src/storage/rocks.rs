@@ -7,15 +7,20 @@ use rocksdb::{DB, Options, DBCompactionStyle};
 use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
-use crate::storage::opdb::UserInfo;
+use crate::storage::opdb::{UserInfo, SlaveBehindSetting};
 use crate::webroute::route::PostUserInfo;
 use crate::ha::nodes_manager::DifferenceSql;
+use crate::ha::route_manager::RouteInfo;
+use crate::ha::sys_manager::MonitorSetting;
 
 
 pub enum PrefixTypeCode {
     RouteInfo,              //保存集群路由信息的前缀
     RollBackSql,            //保存回滚sql信息的前缀
     UserInfo,               //用户信息
+    SlaveDelaySeting,       //每个集群slave最大延迟时间配置， 用于路由剔除
+    NodeMonitorSeting,      //每个节点打开监控的配置
+    NodeMonitorData,        //每个节点的监控数据
 }
 
 impl PrefixTypeCode {
@@ -30,6 +35,15 @@ impl PrefixTypeCode {
             }
             PrefixTypeCode::UserInfo => {
                 format!("{}{}",0x03, &prefix)
+            }
+            PrefixTypeCode::SlaveDelaySeting => {
+                format!("{}{}",0x04, &prefix)
+            }
+            PrefixTypeCode::NodeMonitorSeting => {
+                format!("{}{}", 0x05, &prefix)
+            }
+            PrefixTypeCode::NodeMonitorData => {
+                format!("{}{}", 0x06, &prefix)
             }
         }
     }
@@ -232,7 +246,6 @@ impl DbInfo {
         Ok(())
     }
 
-
     pub fn get_rollback_sql(&self, prefix: &String) -> Result<Vec<RowValue<DifferenceSql>>, Box<dyn Error>>{
         let prefix = format!("{}:{}", PrefixTypeCode::RollBackSql.prefix(), prefix);
         let mut rw = vec![];
@@ -241,6 +254,47 @@ impl DbInfo {
             if !row.key.starts_with(&prefix){continue;}
             let value: DifferenceSql = serde_json::from_str(&row.value)?;
             let r = RowValue{ key: row.key.clone(), value };
+            rw.push(r);
+        }
+        Ok(rw)
+    }
+
+    pub fn get_route_all(&self) -> Result<Vec<RowValue<RouteInfo>>, Box<dyn Error>>{
+        let prefix = format!("{}", PrefixTypeCode::RouteInfo.prefix());
+        let mut rw = vec![];
+        let result = self.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+        for row in &result{
+            if !row.key.starts_with(&prefix){continue;}
+            let value: RouteInfo = serde_json::from_str(&row.value)?;
+            let r = RowValue{ key: row.key.clone(), value };
+            rw.push(r);
+        }
+        Ok(rw)
+    }
+
+
+    ///
+    /// 获取集群slave behind延迟配置， 如果未配置默认100
+    pub fn get_hehind_setting(&self, cluster_name: &String) -> Result<usize, Box<dyn Error>>{
+        let result = self.prefix_get(&PrefixTypeCode::SlaveDelaySeting, cluster_name)?;
+        if result.value.len() > 0{
+            let v: SlaveBehindSetting = serde_json::from_str(&result.value)?;
+            return Ok(v.delay)
+        }
+        return Ok(100)
+    }
+
+    ///
+    /// 获取所有节点监控开关配置
+    pub fn get_monitor_setting(&self) -> Result<Vec<RowValue<MonitorSetting>>, Box<dyn Error>>{
+        let prefix = PrefixTypeCode::NodeMonitorSeting.prefix();
+        let mut rw = vec![];
+        let result = self.prefix_iterator(&prefix, &CfNameTypeCode::SystemData.get())?;
+        for row in result{
+            if !row.key.starts_with(&prefix){continue;}
+            if row.value.len() == 0 {continue;}
+            let value: MonitorSetting = serde_json::from_str(&row.value)?;
+            let r = RowValue{key: value.host.clone() , value};
             rw.push(r);
         }
         Ok(rw)

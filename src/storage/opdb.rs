@@ -90,6 +90,8 @@ impl HaChangeLog {
 }
 
 ///
+///
+///
 /// 用户信息结构
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
@@ -114,6 +116,8 @@ impl UserInfo {
     }
 }
 
+///
+///
 ///
 /// 节点基础信息, host做为key
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -195,10 +199,13 @@ impl HostInfoValue {
 }
 
 ///
+///
+///
+///
 /// 获取db中现有的cluster列表
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NodeClusterList{
-    cluster_name_list: Vec<String>
+    pub cluster_name_list: Vec<String>
 }
 
 impl NodeClusterList{
@@ -226,6 +233,9 @@ impl NodeClusterList{
 }
 
 
+///
+///
+///
 ///
 /// node节点信息
 #[derive(Deserialize, Serialize, Debug)]
@@ -275,6 +285,9 @@ impl NodeInfo{
 }
 
 ///
+///
+///
+///
 /// 每个集群节点信息
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ClusterNodeInfo{
@@ -316,6 +329,16 @@ impl MysqlState{
         db.put(&a, &CfNameTypeCode::NodesState.get())?;
         Ok(())
     }
+}
+
+
+///
+///
+/// slave behind 配置结构体
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SlaveBehindSetting{
+    pub cluster_name: String,
+    pub delay: usize
 }
 
 

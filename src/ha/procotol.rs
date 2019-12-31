@@ -105,6 +105,12 @@ impl MyProtocol {
     }
 
     ///
+    /// 从mysql节点获取监控信息
+//    pub fn get_monitor(&self, host: &String) -> Result<MysqlMonitorStatus, Box<dyn Error>>{
+//
+//    }
+
+    ///
     /// 推送差异binlog到新master
     ///
     /// 返回sql事务数据
@@ -555,6 +561,35 @@ impl HostInfoValueGetAllState {
     }
 }
 
+///
+/// mysql运行状态监控值
+#[derive(Deserialize, Serialize, Debug)]
+pub struct MysqlMonitorStatus{
+    pub com_insert: usize,
+    pub com_update: usize,
+    pub com_delete: usize,
+    pub com_select: usize,
+    pub questions: usize,
+    pub innodb_row_lock_current_waits: usize,
+    pub innodb_row_lock_time: usize,
+    pub created_tmp_disk_tables: usize,
+    pub created_tmp_tables: usize,
+    pub innodb_buffer_pool_reads: usize,
+    pub innodb_buffer_pool_read_requests: usize,
+    pub handler_read_first: usize,
+    pub handler_read_key: usize,
+    pub handler_read_next: usize,
+    pub handler_read_prev: usize,
+    pub handler_read_rnd: usize,
+    pub handler_read_rnd_next: usize,
+    pub innodb_os_log_pending_fsyncs: usize,
+    pub innodb_os_log_pending_writes: usize,
+    pub innodb_log_waits: usize,
+    pub threads_connected: usize,
+    pub threads_running: usize,
+    pub bytes_sent: usize,
+    pub bytes_received: usize
+}
 
 ///
 /// 用于追加sql， 发送于客户端执行
