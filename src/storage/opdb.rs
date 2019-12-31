@@ -7,7 +7,7 @@ use crate::webroute::route::{HostInfo, PostUserInfo, EditInfo, EditMainTain};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
-use crate::ha::nodes_manager::{SlaveInfo, DifferenceSql};
+use crate::ha::nodes_manager::{SlaveInfo};
 use serde::{Serialize, Deserialize};
 use crate::rand_string;
 use crate::ha::procotol::MysqlState;

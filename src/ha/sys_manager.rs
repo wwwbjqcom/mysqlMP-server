@@ -5,7 +5,7 @@
 
 
 use actix_web::web;
-use crate::storage::rocks::{DbInfo, PrefixTypeCode, CfNameTypeCode, KeyValue};
+use crate::storage::rocks::{DbInfo, PrefixTypeCode, CfNameTypeCode};
 use std::{thread, time};
 use crate::ha::nodes_manager::DifferenceSql;
 use std::error::Error;

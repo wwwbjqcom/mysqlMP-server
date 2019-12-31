@@ -5,10 +5,9 @@
 
 
 use actix_web::web;
-use crate::storage::rocks::{DbInfo, CfNameTypeCode, PrefixTypeCode};
+use crate::storage::rocks::{DbInfo, CfNameTypeCode};
 use std::error::Error;
 use crate::storage::opdb::{ClusterNodeInfo, HaChangeLog};
-use crate::ha::nodes_manager::DifferenceSql;
 use serde::Serialize;
 
 #[derive(Serialize)]
