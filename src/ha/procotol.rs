@@ -330,6 +330,7 @@ pub struct ReponseErr{
 pub struct MysqlState {
     pub online: bool,
     pub role: String,
+    pub master: String,
     pub sql_thread: bool,
     pub io_thread: bool,
     pub seconds_behind: usize,
@@ -350,6 +351,7 @@ impl MysqlState{
         MysqlState{
             online: false,
             role: "".to_string(),
+            master: "".to_string(),
             sql_thread: false,
             io_thread: false,
             seconds_behind: 0,

@@ -236,6 +236,7 @@ pub struct NodeInfo{
     pub online: bool,   //是否在线， true、false
     pub maintain: bool, //是否处于维护模式，true、false
     pub role: String,   //主从角色
+    pub master: String,
     pub sql_thread: bool,
     pub io_thread: bool,
     pub seconds_behind: usize,
@@ -257,6 +258,7 @@ impl NodeInfo{
             online: node.online.clone(),
             maintain: node.maintain.clone(),
             role: state.role.clone(),
+            master: state.master.clone(),
             sql_thread: state.sql_thread.clone(),
             io_thread: state.io_thread.clone(),
             seconds_behind: state.seconds_behind.clone(),
