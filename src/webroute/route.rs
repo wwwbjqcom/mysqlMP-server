@@ -13,6 +13,7 @@ use crate::ha::nodes_manager::{SwitchForNodes, DifferenceSql, SqlRelation};
 use crate::storage::opdb::{HaChangeLog, UserInfo, HostInfoValue};
 use crate::ha::route_manager::RouteInfo;
 use crate::webroute::response::{response_state, response_value, ResponseState};
+use crate::webroute::new_route::PostCluster;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -258,9 +259,19 @@ pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> H
     }
 }
 
-pub fn get_all_route_info(db: web::Data<DbInfo>) -> HttpResponse {
-    let info = GetRouteInfo{ hook_id: "".to_string(), clusters: vec![] };
-    let v = info.getall(&db);
+impl PostCluster{
+    fn get_route_info(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>>{
+        let mut res_route = ResponseRouteInfo{route: vec![]};
+        let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, &self.cluster_name)?;
+        let value: RouteInfo = serde_json::from_str(&kv.value)?;
+        res_route.route.push(value);
+
+        Ok(res_route)
+    }
+}
+
+pub fn web_get_route_info(db: web::Data<DbInfo>, info: web::Json<PostCluster>) -> HttpResponse {
+    let v = info.get_route_info(&db);
     match v {
         Ok(rinfo) => {
             return response_value(&rinfo);
