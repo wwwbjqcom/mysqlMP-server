@@ -229,6 +229,15 @@ pub fn start_web(db: DbInfo) {
                     )
             )
             .service(
+                web::resource("/getrouteclusternamelist")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_route_cluster_list)
+                    )
+            )
+            .service(
                 web::resource("/getdbhadata")
                     .route(
                         web::route()
@@ -316,6 +325,24 @@ pub fn start_web(db: DbInfo) {
                             .guard(guard::Post())
                             .guard(guard::Header("content-type", "application/json"))
                             .to(webroute::route::login)
+                    )
+            )
+            .service(
+                web::resource("/slavedelaysetting")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::slave_delay_setting)
+                    )
+            )
+            .service(
+                web::resource("/getslavedealysetting")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::get_slave_delay_setting)
                     )
             )
             //.route("/getdbhadata", web::post().to(webroute::new_route::get_cluster_node_info))

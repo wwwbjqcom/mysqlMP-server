@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde::Deserialize;
 use actix_web::{web, HttpResponse};
 use crate::storage::rocks::{DbInfo};
-use crate::storage::opdb::{ ClusterNodeInfo, NodeClusterList};
+use crate::storage::opdb::{ClusterNodeInfo, NodeClusterList, RouteClusterList, SlaveBehindSetting};
 use crate::webroute::response::{response_value, ResponseState};
 use crate::webroute::op_value::ClusterMonitorInfo;
 
@@ -18,6 +18,13 @@ pub fn get_cluster_list(data: web::Data<DbInfo>) -> HttpResponse {
     response_value(&respons_list)
 }
 
+pub fn get_route_cluster_list(data: web::Data<DbInfo>) -> HttpResponse {
+    let mut respons_list = RouteClusterList::new();
+    if let Err(e) = respons_list.init(&data){
+        return ResponseState::error(e.to_string())
+    };
+    response_value(&respons_list)
+}
 
 ///
 /// web端根据cluster_name拉去对应集群节点信息
@@ -34,9 +41,6 @@ pub fn get_cluster_node_info(data: web::Data<DbInfo>, info: web::Json<PostCluste
     response_value(&cluster_info)
 }
 
-
-
-
 ///
 /// 获取集群统计监控信息
 pub fn get_cluster_monitor_status(data: web::Data<DbInfo>, info: web::Json<PostCluster>) -> HttpResponse{
@@ -45,4 +49,27 @@ pub fn get_cluster_monitor_status(data: web::Data<DbInfo>, info: web::Json<PostC
         return ResponseState::error(e.to_string());
     }
     response_value(&monitor_info)
+}
+
+///
+/// 配置slave 延迟检查
+pub fn slave_delay_setting(data: web::Data<DbInfo>, info: web::Json<SlaveBehindSetting>) -> HttpResponse{
+    if let Err(e) = info.save(&data){
+        return ResponseState::error(e.to_string());
+    }
+    ResponseState::ok()
+}
+
+///
+/// 获取slave延迟配置
+pub fn get_slave_delay_setting(data: web::Data<DbInfo>, info: web::Json<PostCluster>) -> HttpResponse{
+    let result = data.get_hehind_setting(&info.cluster_name);
+    match result {
+        Ok(v) =>{
+            return response_value(&v);
+        }
+        Err(e) => {
+            return ResponseState::error(e.to_string());
+        }
+    }
 }

@@ -4,13 +4,14 @@
 */
 use actix_web::{web};
 use crate::webroute::route::{HostInfo, PostUserInfo, EditInfo, EditMainTain};
-use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode};
+use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
 use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
 use std::error::Error;
 use crate::ha::nodes_manager::{SlaveInfo};
 use serde::{Serialize, Deserialize};
 use crate::rand_string;
 use crate::ha::procotol::MysqlState;
+use crate::ha::sys_manager::MonitorSetting;
 
 
 ///
@@ -29,7 +30,12 @@ pub fn insert_mysql_host_info(data: web::Data<DbInfo>, info: &web::Json<HostInfo
         _ => {}
     }
     let v = HostInfoValue::new(info)?;
-    return v.save(&data);
+    v.save(&data)?;
+
+    //初始化节点监控配置
+    let monitor_info = MonitorSetting::new(&info.host);
+    monitor_info.save(&data)?;
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -233,6 +239,37 @@ impl NodeClusterList{
 }
 
 
+/// 获取route信息中现有的cluster列表
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RouteClusterList{
+    pub cluster_name_list: Vec<String>
+}
+
+impl RouteClusterList{
+    pub fn new() -> RouteClusterList {
+        RouteClusterList{ cluster_name_list: vec![] }
+    }
+
+    pub fn init(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        let route_all = db.get_route_all()?;
+        for route in &route_all {
+            if !self.is_exists(&route.value.cluster_name){
+                self.cluster_name_list.push(route.value.cluster_name.clone());
+            }
+        }
+        Ok(())
+    }
+
+    fn is_exists(&self, cluster_name: &String) -> bool {
+        for cl in &self.cluster_name_list {
+            if cl == cluster_name {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 ///
 ///
 ///
@@ -339,6 +376,16 @@ impl MysqlState{
 pub struct SlaveBehindSetting{
     pub cluster_name: String,
     pub delay: usize
+}
+
+impl SlaveBehindSetting{
+    pub fn new(cluster_name: &String) -> SlaveBehindSetting {
+        SlaveBehindSetting{ cluster_name: cluster_name.clone(), delay: 100 }
+    }
+    pub fn save(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        db.prefix_put(&PrefixTypeCode::SlaveDelaySeting, &self.cluster_name, &self)?;
+        Ok(())
+    }
 }
 
 

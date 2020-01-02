@@ -106,9 +106,24 @@ impl MyProtocol {
 
     ///
     /// 从mysql节点获取监控信息
-//    pub fn get_monitor(&self, host: &String) -> Result<MysqlMonitorStatus, Box<dyn Error>>{
-//
-//    }
+    pub fn get_monitor(&self, host: &String) -> Result<MysqlMonitorStatus, Box<dyn Error>>{
+        let packet_value = Null::new();
+        let packet = self.socket_io(host, &packet_value)?;
+        match packet.type_code {
+            MyProtocol::GetMonitor => {
+                let value: MysqlMonitorStatus = serde_json::from_slice(&packet.value)?;
+                return Ok(value);
+            }
+            MyProtocol::Error => {
+                let err: ReponseErr = serde_json::from_slice(&packet.value)?;
+                return Err(err.err.into());
+            }
+            _ => {
+                let a = format!("return invalid type code:{:?}", &packet.type_code);
+                return Err(a.into());
+            }
+        }
+    }
 
     ///
     /// 推送差异binlog到新master
@@ -588,7 +603,8 @@ pub struct MysqlMonitorStatus{
     pub threads_connected: usize,
     pub threads_running: usize,
     pub bytes_sent: usize,
-    pub bytes_received: usize
+    pub bytes_received: usize,
+    pub time: i64
 }
 
 ///

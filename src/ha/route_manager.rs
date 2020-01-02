@@ -192,7 +192,7 @@ impl ClusterNodeInfo {
 
     ///
     /// 检查slave节点状态
-    /// 1、在线时需要检查replication延迟状态， behind超过100将剔除该节点
+    /// 1、在线时需要检查replication延迟状态， behind超过100将剔除该节点，如果配置为0表示不检查延迟
     /// 2、如果宕机则需要检查是实例宕机还是client宕机
     /// 3、如果为实例宕机直接剔除
     /// 4、如果client宕机将不做任何操作， 直接添加对应节点， 这里无法检测hebind值，因为如果client宕机将不会更新状态
@@ -207,7 +207,10 @@ impl ClusterNodeInfo {
                 if !node_status.io_thread {
                     return Ok(())
                 }
-                if node_status.seconds_behind <=100 {
+                if self.slave_behind_setting == 0{
+                    //为0表示不判断延迟
+                }
+                else if node_status.seconds_behind <=self.slave_behind_setting {
                     route_info.set_slave_info(node);
                 }
             }else {
@@ -247,11 +250,11 @@ impl AllNode {
                     continue 'all;
                 }
             }
-            let mut delay = 100 as usize;
+            let mut delay = 100;
             let delay_check = db.get_hehind_setting(&ninfo.value.cluster_name);
             match delay_check {
                 Ok(v) => {
-                    delay = v;
+                    delay = v.delay;
                 }
                 Err(e) => {
                     info!("check slave behind setting for cluster_name:{} , Error: {:?}", &ninfo.value.cluster_name,e.to_string());

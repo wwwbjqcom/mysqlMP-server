@@ -108,7 +108,7 @@ impl AllNodes {
             let state = get_node_state_from_host(&nodes.key);
             match state {
                 Ok(v) => {
-                    info!("{:?}", &v);
+                    //info!("{:?}", &v);
                     let state;
                     if !v.online {
                         state = nodes.set_offline(&db, sender);
