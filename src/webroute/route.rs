@@ -354,7 +354,7 @@ pub fn login(db: web::Data<DbInfo>, info: web::Json<PostUserInfo>, session: Sess
 }
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct PostUser{
     user_name: String
 }
