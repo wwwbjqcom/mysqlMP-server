@@ -353,6 +353,19 @@ pub fn login(db: web::Data<DbInfo>, info: web::Json<PostUserInfo>, session: Sess
     }
 }
 
+
+#[derive(Serialize)]
+struct PostUser{
+    user_name: String
+}
+///
+/// 退出登陆
+pub fn loginout(info: web::Json<PostUser>, session: Session) -> actix_web::Result<HttpResponse> {
+    session.remove(&info.user_name);
+    Ok(ResponseState::ok())
+}
+
+
 #[derive(Serialize)]
 pub struct GetUserInfo{
     pub user_name: String,

@@ -168,6 +168,7 @@ pub fn start_web(db: DbInfo) {
 //            .wrap(Logger::new("%a %s %{User-Agent}i"))
             .wrap(
                 CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
+                    .max_age(60)
                     .secure(false),
             )
             .register_data(rcdb.clone())
@@ -325,6 +326,15 @@ pub fn start_web(db: DbInfo) {
                             .guard(guard::Post())
                             .guard(guard::Header("content-type", "application/json"))
                             .to(webroute::route::login)
+                    )
+            )
+            .service(
+                web::resource("/loginout")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::loginout)
                     )
             )
             .service(
