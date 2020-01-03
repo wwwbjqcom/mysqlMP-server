@@ -209,8 +209,9 @@ impl ClusterNodeInfo {
                 }
                 if self.slave_behind_setting == 0{
                     //为0表示不判断延迟
+                    route_info.set_slave_info(node);
                 }
-                else if node_status.seconds_behind <=self.slave_behind_setting {
+                else if node_status.seconds_behind <= self.slave_behind_setting {
                     route_info.set_slave_info(node);
                 }
             }else {
