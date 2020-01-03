@@ -169,6 +169,7 @@ pub fn start_web(db: DbInfo) {
             .wrap(
                 CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
                     .max_age(60)
+                    .path("/session")
                     .secure(false),
             )
             .register_data(rcdb.clone())
