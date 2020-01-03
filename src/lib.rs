@@ -28,7 +28,7 @@ use log4rs::append::file::FileAppender;
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::config::{Appender, Root};
 use actix_session::{CookieSession};
-//use actix_web::middleware::Logger;
+use actix_web::middleware::Logger;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "example", about = "An example of StructOpt usage.")]
@@ -164,12 +164,11 @@ pub fn start_web(db: DbInfo) {
 
     HttpServer::new(move|| {
         App::new()
-//            .wrap(Logger::default())
-//            .wrap(Logger::new("%a %s %{User-Agent}i"))
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %s %{User-Agent}i"))
             .wrap(
                 CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
                     .max_age(60)
-                    .path("/session")
                     .secure(false),
             )
             .register_data(rcdb.clone())
@@ -192,6 +191,15 @@ pub fn start_web(db: DbInfo) {
                             .guard(guard::Post())
                             .guard(guard::Header("content-type", "application/json"))
                             .to(webroute::route::web_get_route_info)
+                    )
+            )
+            .service(
+                web::resource("/getrouteinfo")  // 用于脚本post获取相关集群路由信息
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::route::get_route_info)
                     )
             )
             .service(

@@ -270,6 +270,9 @@ impl PostCluster{
     }
 }
 
+///
+///
+/// web端拉取对应集群的路由信息
 pub fn web_get_route_info(db: web::Data<DbInfo>, info: web::Json<PostCluster>) -> HttpResponse {
     let v = info.get_route_info(&db);
     match v {
