@@ -213,6 +213,7 @@ impl MonitorNodeSetInfo{
 
     fn monitor_state(&mut self, db:&web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let monitor_data = MyProtocol::get_monitor(&MyProtocol::GetMonitor, &self.setting.host)?;
+        info!("{:?}", &monitor_data);
         if self.last_monitor_value.time != 0 {
             monitor_data.save(db, &self.setting.host, &mut self.last_monitor_value)?;
         }
@@ -223,6 +224,7 @@ impl MonitorNodeSetInfo{
 
 fn monitor(db: &web::Data<DbInfo>, setting: &mut Vec<MonitorNodeSetInfo>) {
     for rw in setting{
+        //if !rw.setting{continue;}
         if let Err(e) = rw.monitor_state(db){
             info!("get monitor data failed({}):{}", &rw.setting.host, e.to_string());
         }
@@ -263,7 +265,8 @@ pub fn manager(db: web::Data<DbInfo>) {
         ms.push(MonitorNodeSetInfo::new(&rw.value));
     }
     loop {
-        if crate::timestamp() - sche_start_time >= (3600000 * 24) {
+        //if crate::timestamp() - sche_start_time >= (3600000 * 24) {
+        if crate::timestamp() - sche_start_time >= 60 {
             //每24小时清理一次数据
             let b = db.clone();
             thread::spawn(move ||{
