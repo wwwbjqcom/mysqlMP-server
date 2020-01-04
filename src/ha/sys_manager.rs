@@ -166,6 +166,11 @@ impl MonitorSetting{
         db.prefix_put(&PrefixTypeCode::NodeMonitorSeting, &self.host, &self)?;
         Ok(())
     }
+
+    pub fn delete(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        db.delete(&self.host, &PrefixTypeCode::NodeMonitorSeting.prefix())?;
+        Ok(())
+    }
 }
 
 

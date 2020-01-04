@@ -14,6 +14,7 @@ use crate::storage::opdb::{HaChangeLog, UserInfo, HostInfoValue};
 use crate::ha::route_manager::RouteInfo;
 use crate::webroute::response::{response_state, response_value, ResponseState};
 use crate::webroute::new_route::PostCluster;
+use crate::ha::sys_manager::MonitorSetting;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -112,7 +113,22 @@ impl DeleteNode {
             Ok(v) => {
                 let value: HostInfoValue = serde_json::from_str(&v.value).unwrap();
                 if value.maintain {
-                    return response_state(data.delete(&self.host, &cf_name));
+                    if let Err(e) = data.delete(&self.host, &cf_name){
+                        return ResponseState::error(e.to_string());
+                    }
+                    //删除监控配置
+                    let monitor_set = MonitorSetting::new(&self.host);
+                    if let Err(e) = monitor_set.delete(data){
+                        return ResponseState::error(e.to_string());
+                    }
+
+                    //删除状态信息
+                    if let Err(e) = data.delete(&self.host, &CfNameTypeCode::NodesState.get()){
+                        return ResponseState::error(e.to_string());
+                    }
+
+                    return ResponseState::ok();
+
                 }else {
                     let err = String::from("the maintenance mode node is only deleted");
                     return ResponseState::error(err);
