@@ -229,7 +229,7 @@ impl MonitorNodeSetInfo{
 
 fn monitor(db: &web::Data<DbInfo>, setting: &mut Vec<MonitorNodeSetInfo>) {
     for rw in setting{
-        if !rw.setting{continue;}
+        if !rw.setting.monitor{continue;}
         if let Err(e) = rw.monitor_state(db){
             info!("get monitor data failed({}):{}", &rw.setting.host, e.to_string());
         }
