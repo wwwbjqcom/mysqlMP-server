@@ -268,7 +268,9 @@ pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> H
     let v = info.get(&db);
     match v {
         Ok(rinfo) => {
-            return response_value(&rinfo);
+            return HttpResponse::Ok()
+                .json(rinfo);
+//            return response_value(&rinfo);
         }
         Err(e) => {
             return ResponseState::error(e.to_string());
