@@ -578,7 +578,7 @@ impl HostInfoValueGetAllState {
 
 ///
 /// mysql运行状态监控值
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct MysqlMonitorStatus{
     pub com_insert: usize,
     pub com_update: usize,

@@ -300,38 +300,37 @@ impl DbInfo {
         Ok(rw)
     }
 
-//    /
-//    / 删除过期监控数据
-//    pub fn expired_monitor_data(&self, monitor_set: &Vec<RowValue<MonitorSetting>>) -> Result<(), Box<dyn Error>>{
-//        let cf_name = CfNameTypeCode::SystemData.get();
-//        self.check_cf(&cf_name)?;
-//        if let Some(cf) = self.db.cf_handle(&cf_name){
-//            let mut iter = self.db.raw_iterator_cf(cf)?;
-//            iter.seek_to_first();
-//            while iter.valid() {
-//                let mut key: String = String::from("");
-//                let mut value: String = String::from("");
-//                if let Some(v) = iter.key() {
-//                    key = from_utf8(&v.to_vec())?.parse()?;
-//                    for mset in monitor_set{
-//                        if key.contains(mset.value.host.as_str()){
-//                            let key_info = key.split("_");
-//                            let key_info = key_info.collect::<Vec<&str>>();
-//                            let time = key_info[1].to_string().parse::<i64>()?;
-//                        }
-//                    }
-//                }
-//
-//                if let Some(v) = iter.value() {
-//                    value = from_utf8(&v.to_vec())?.parse()?;
-//                }
-//                iter.next();
-//            }
-//            return Ok(());
-//        }
-//        let a = format!("no cloumnfamily {}", cf_name);
-//        return  Err(a.into())
-//    }
+    ///
+    /// 删除过期监控数据
+    pub fn expired_monitor_data(&self, monitor_set: &Vec<RowValue<MonitorSetting>>) -> Result<(), Box<dyn Error>>{
+        let one_day_ms = (60 * 1000 * 60 * 24) as i64; // 一天多少毫秒
+        let cur_time = crate::timestamp();
+        let cf_name = CfNameTypeCode::SystemData.get();
+        self.check_cf(&cf_name)?;
+        if let Some(cf) = self.db.cf_handle(&cf_name){
+            let mut iter = self.db.raw_iterator_cf(cf)?;
+            iter.seek_to_first();
+            while iter.valid() {
+                if let Some(v) = iter.key() {
+                    let key: String = from_utf8(&v.to_vec())?.parse()?;
+                    for mset in monitor_set{
+                        if key.contains(mset.value.host.as_str()){
+                            let key_info = key.split("_");
+                            let key_info = key_info.collect::<Vec<&str>>();
+                            let time = key_info[1].to_string().parse::<i64>()?;
+                            if &(cur_time - time) > &(one_day_ms * mset.value.days as i64) {
+                                self.delete(&key, &cf_name)?;
+                            }
+                        }
+                    }
+                }
+                iter.next();
+            }
+            return Ok(());
+        }
+        let a = format!("no cloumnfamily {}", cf_name);
+        return  Err(a.into())
+    }
 }
 
 fn init_db(cf_names: &Vec<String>) -> Result<DB, Box<dyn Error>> {

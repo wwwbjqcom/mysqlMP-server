@@ -41,7 +41,7 @@ pub fn index_file(session: Session) -> Result<NamedFile>{
     if !session_check(session).unwrap(){
         return login();
     }
-    Ok(NamedFile::open("index2.html")?)
+    Ok(NamedFile::open("index.html")?)
 }
 
 pub fn session_check(session: Session) -> Result<bool, Box<dyn Error>> {

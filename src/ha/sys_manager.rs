@@ -5,7 +5,6 @@
 
 
 use actix_web::web;
-use rocksdb::{WriteBatch};
 use crate::storage::rocks::{DbInfo, PrefixTypeCode, CfNameTypeCode, RowValue};
 use std::{thread, time};
 use crate::ha::nodes_manager::DifferenceSql;
@@ -104,64 +103,51 @@ fn expired_dirty_route_info(db: &web::Data<DbInfo>) {
 ///
 ///
 impl MysqlMonitorStatus{
-    fn save(&self, db: &web::Data<DbInfo>, host: &String) -> Result<(), Box<dyn Error>>{
+    fn save(&self, db: &web::Data<DbInfo>, host: &String, last_value: &mut MysqlMonitorStatus) -> Result<(), Box<dyn Error>>{
         let prefix = PrefixTypeCode::NodeMonitorData;
         let key = format!("{}_{}", host, &self.time);
-        db.prefix_put(&prefix, &key, &self)?;
+        let ms = self.calculation(last_value);
+        db.prefix_put(&prefix, &key, &ms)?;
 //        let wb = self.batch(db, host)?;
 //        db.db.write(wb)?;
         Ok(())
     }
 
-    fn delete(&self, db: &web::Data<DbInfo>, host: &String) -> Result<(), Box<dyn Error>>{
-        let prefix = PrefixTypeCode::NodeMonitorData.prefix();
-        let key = format!("{}:{}_{}", &prefix, host, &self.time);
-        db.delete(&key, &CfNameTypeCode::SystemData.get())?;
-        Ok(())
-    }
-
-    fn batch(&self, db:&web::Data<DbInfo>, host: &String) -> Result<WriteBatch, Box<dyn Error>>{
-        let mut wb = WriteBatch::default();
-        match db.db.cf_handle(&CfNameTypeCode::SystemData.get()){
-            Some(cf) => {
-                wb.put_cf(cf, self.get_key(host, String::from("com_insert")), &self.com_insert.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("com_insert")), &self.com_insert.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("com_update")), &self.com_update.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("com_delete")), &self.com_delete.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("com_select")), &self.com_select.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("questions")), &self.questions.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_row_lock_current_waits")), &self.innodb_row_lock_current_waits.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_row_lock_time")), &self.innodb_row_lock_time.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("created_tmp_disk_tables")), &self.created_tmp_disk_tables.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("created_tmp_tables")), &self.created_tmp_tables.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_buffer_pool_reads")), &self.innodb_buffer_pool_reads.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_buffer_pool_read_requests")), &self.innodb_buffer_pool_read_requests.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_first")), &self.handler_read_first.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_key")), &self.handler_read_key.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_next")), &self.handler_read_next.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_prev")), &self.handler_read_prev.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_rnd")), &self.handler_read_rnd.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("handler_read_rnd_next")), &self.handler_read_rnd_next.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_os_log_pending_fsyncs")), &self.innodb_os_log_pending_fsyncs.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_os_log_pending_writes")), &self.innodb_os_log_pending_writes.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("innodb_log_waits")), &self.innodb_log_waits.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("threads_connected")), &self.threads_connected.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("threads_running")), &self.threads_running.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("bytes_sent")), &self.bytes_sent.to_string())?;
-                wb.put_cf(cf,self.get_key(host, String::from("bytes_received")), &self.bytes_received.to_string())?;
-            }
-            None =>{}
+    ///
+    /// 计算两次监控之间数据差， 并计算平均到秒
+    fn calculation(&self, last_value: &mut MysqlMonitorStatus) -> MysqlMonitorStatus{
+        let time_dif = ((self.time - last_value.time) / 1000) as usize;
+        MysqlMonitorStatus{
+            com_insert: (self.com_insert - last_value.com_insert) / time_dif,
+            com_update: (self.com_update - last_value.com_update) / time_dif,
+            com_delete: (self.com_delete - last_value.com_delete) / time_dif,
+            com_select: (self.com_select - last_value.com_select) / time_dif,
+            questions: (self.questions - last_value.questions) / time_dif,
+            innodb_row_lock_current_waits: (self.innodb_row_lock_current_waits - last_value.innodb_row_lock_current_waits) / time_dif,
+            innodb_row_lock_time: (self.innodb_row_lock_time - last_value.innodb_row_lock_time) / time_dif,
+            created_tmp_disk_tables: (self.created_tmp_disk_tables - last_value.created_tmp_disk_tables) / time_dif,
+            created_tmp_tables: (self.created_tmp_tables - last_value.created_tmp_tables) / time_dif,
+            innodb_buffer_pool_reads: (self.innodb_buffer_pool_reads - last_value.innodb_buffer_pool_reads) /time_dif,
+            innodb_buffer_pool_read_requests: (self.innodb_buffer_pool_read_requests - last_value.innodb_buffer_pool_read_requests) / time_dif,
+            handler_read_first: (self.handler_read_first - last_value.handler_read_first) / time_dif,
+            handler_read_key: (self.handler_read_key - last_value.handler_read_key) / time_dif,
+            handler_read_next: (self.handler_read_next - last_value.handler_read_next) / time_dif,
+            handler_read_prev: (self.handler_read_prev - last_value.handler_read_prev) / time_dif,
+            handler_read_rnd: (self.handler_read_rnd - last_value.handler_read_rnd) / time_dif,
+            handler_read_rnd_next: (self.handler_read_rnd_next - last_value.handler_read_rnd_next) / time_dif,
+            innodb_os_log_pending_fsyncs: (self.innodb_os_log_pending_fsyncs - last_value.innodb_os_log_pending_fsyncs) / time_dif,
+            innodb_os_log_pending_writes: (self.innodb_os_log_pending_writes - last_value.innodb_os_log_pending_writes) / time_dif,
+            innodb_log_waits: (self.innodb_log_waits - last_value.innodb_log_waits) / time_dif,
+            threads_connected: self.threads_connected,
+            threads_running: self.threads_running,
+            bytes_sent: (self.bytes_sent - last_value.bytes_sent) / time_dif,
+            bytes_received: (self.bytes_received - last_value.bytes_received) / time_dif,
+            time: self.time
         }
-        Ok(wb)
-    }
-
-    fn get_key(&self, host: &String, key: String) -> String{
-        let a = format!("{}_{}_{}_{}", &PrefixTypeCode::NodeMonitorData.prefix(),host.clone(), key, self.time.clone());
-        return a;
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MonitorSetting{
     pub host: String,
     pub monitor: bool,
@@ -180,37 +166,82 @@ impl MonitorSetting{
         db.prefix_put(&PrefixTypeCode::NodeMonitorSeting, &self.host, &self)?;
         Ok(())
     }
+}
 
-    fn get_monitor_state(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
-        if self.monitor{
-            let monitor_data = MyProtocol::get_monitor(&MyProtocol::GetMonitor, &self.host)?;
-            monitor_data.save(db, &self.host)?;
+
+struct MonitorNodeSetInfo{
+    setting: MonitorSetting,            //配置
+    last_monitor_value: MysqlMonitorStatus  //上一次检查数据，用于计算差值
+}
+impl MonitorNodeSetInfo{
+    fn new(ms: &MonitorSetting) -> MonitorNodeSetInfo{
+        MonitorNodeSetInfo{
+            setting: ms.clone(),
+            last_monitor_value: MysqlMonitorStatus{
+                com_insert: 0,
+                com_update: 0,
+                com_delete: 0,
+                com_select: 0,
+                questions: 0,
+                innodb_row_lock_current_waits: 0,
+                innodb_row_lock_time: 0,
+                created_tmp_disk_tables: 0,
+                created_tmp_tables: 0,
+                innodb_buffer_pool_reads: 0,
+                innodb_buffer_pool_read_requests: 0,
+                handler_read_first: 0,
+                handler_read_key: 0,
+                handler_read_next: 0,
+                handler_read_prev: 0,
+                handler_read_rnd: 0,
+                handler_read_rnd_next: 0,
+                innodb_os_log_pending_fsyncs: 0,
+                innodb_os_log_pending_writes: 0,
+                innodb_log_waits: 0,
+                threads_connected: 0,
+                threads_running: 0,
+                bytes_sent: 0,
+                bytes_received: 0,
+                time: 0
+            }
         }
+    }
+
+    fn update_value(&mut self, ms: &MysqlMonitorStatus) {
+        self.last_monitor_value = ms.clone();
+    }
+
+    fn monitor_state(&mut self, db:&web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
+        let monitor_data = MyProtocol::get_monitor(&MyProtocol::GetMonitor, &self.setting.host)?;
+        if self.last_monitor_value.time != 0 {
+            monitor_data.save(db, &self.setting.host, &mut self.last_monitor_value)?;
+        }
+        self.last_monitor_value = monitor_data;
         Ok(())
     }
 }
 
-fn monitor(db: &web::Data<DbInfo>, setting: &Vec<RowValue<MonitorSetting>>) {
+fn monitor(db: &web::Data<DbInfo>, setting: &mut Vec<MonitorNodeSetInfo>) {
     for rw in setting{
-        if let Err(e) = rw.value.get_monitor_state(db){
-            info!("get monitor data from {:?} failed: {:?}", rw.key,e.to_string());
+        if let Err(e) = rw.monitor_state(db){
+            info!("get monitor data failed({}):{}", &rw.setting.host, e.to_string());
         }
     }
 }
 ///
 /// 删除过期监控数据， 默认最多保留30天的数据
 fn expired_monitor_data(db: &web::Data<DbInfo>) {
-//    let monitor_set = db.get_monitor_setting();
-//    match monitor_set {
-//        Ok(set) => {
-//            if let Err(e) = db.expired_monitor_data(&monitor_set){
-//                info!("clear outdated monitoring data faild: {}", e.to_string());
-//            }
-//        }
-//        Err(e) => {
-//            info!("get monitor setting error: {:?}", e.to_string());
-//        }
-//    }
+    let monitor_set = db.get_monitor_setting();
+    match monitor_set {
+        Ok(set) => {
+            if let Err(e) = db.expired_monitor_data(&set){
+                info!("clear outdated monitoring data faild: {}", e.to_string());
+            }
+        }
+        Err(e) => {
+            info!("get monitor setting error: {:?}", e.to_string());
+        }
+    }
 }
 
 ///
@@ -226,7 +257,11 @@ fn expired(db: web::Data<DbInfo>){
 pub fn manager(db: web::Data<DbInfo>) {
     let mut sche_start_time = crate::timestamp();
     let mut loop_start_time = crate::timestamp();
-    let mut monitor_set = db.get_monitor_setting();
+    let mut monitor_set = db.get_monitor_setting().unwrap();
+    let mut ms = vec![];
+    for rw in monitor_set{
+        ms.push(MonitorNodeSetInfo::new(&rw.value));
+    }
     loop {
         if crate::timestamp() - sche_start_time >= (3600000 * 24) {
             //每24小时清理一次数据
@@ -239,18 +274,29 @@ pub fn manager(db: web::Data<DbInfo>) {
 
         if crate::timestamp() - loop_start_time >= 60000 {
             //每60秒重新获取一次配置信息
-            monitor_set = db.get_monitor_setting();
+            monitor_set = db.get_monitor_setting().unwrap();
+            ms = init_monitor_set(&monitor_set, &ms);
             loop_start_time = crate::timestamp();
         }
 
-        match &monitor_set {
-            Ok(s) => {
-                monitor(&db, s);
-            }
-            Err(e) => {
-                info!("get monitor setting error: {:?}", e.to_string());
-            }
-        }
+        monitor(&db, &mut ms);
+
         thread::sleep(time::Duration::from_secs(10));
     }
+}
+
+///
+/// 初始化监控配置
+fn init_monitor_set(ms: &Vec<RowValue<MonitorSetting>>, mif: &Vec<MonitorNodeSetInfo>) -> Vec<MonitorNodeSetInfo>{
+    let mut mm = vec![];
+    for rw in ms{
+        let mut mi = MonitorNodeSetInfo::new(&rw.value);
+        for ii in mif{
+            if ii.setting.host == rw.value.host{
+                mi.update_value(&ii.last_monitor_value);
+            }
+        }
+        mm.push(mi);
+    }
+    mm
 }
