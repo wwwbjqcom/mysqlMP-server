@@ -28,17 +28,21 @@
       
 ### 读写路由获取: 读写路由关系通过api接口的方式获取，例如我使用py进行获取，方法如下：    
     
- import requests,json    url = 'https://127.0.0.1:8099/getrouteinfo'      
-    d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ', 'clusters': ['test']}      
-    r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False)      
-print(r.text) clusters: 为集群名列表， 可以同时获取多个    
+
+>  import requests,json    
+>  url = 'https://127.0.0.1:8099/getrouteinfo'  
+> d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ', 'clusters': ['test']}      
+> r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False)      
+> print(r.text)
+
+clusters: 为集群名列表， 可以同时获取多个    
 hook_id: 登陆web页面后在用户信息处获取到    
-    
       
 ### 注意事项:    
-1. 主从复制只支持gtid模式，不支持binlog+position的方式    
- 2. 不支持多通道复制    
- 3. slave默认都会设置为read_only 及双0刷盘配置    
- 4. 所有节点都有参与master宕机复检，所以节点之间对应端口需要互通及mysql登陆权限    
- 5. slave节点宕机、设置为维护模式、主从延迟超过设定值都会从路由信息中剔除    
- 6. 如果宕机切换失败，需手动进行强制切换
+1. 主从复制只支持gtid模式，不支持binlog+position的方式   
+2. 仅支持master-slave管理
+3.  不支持多通道复制    
+4. slave默认都会设置为read_only 及双0刷盘配置   
+5. 所有节点都有参与master宕机复检，所以节点之间对应端口需要互通及mysql登陆权限     
+6. slave节点宕机、设置为维护模式、主从延迟超过设定值都会从路由信息中剔除
+7. 如果宕机切换失败，需手动进行强制切换    
