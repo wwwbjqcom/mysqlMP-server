@@ -313,7 +313,7 @@ impl DbInfo {
             while iter.valid() {
                 if let Some(v) = iter.key() {
                     let key: String = from_utf8(&v.to_vec())?.parse()?;
-                    if key.starts_with(PrefixTypeCode::NodeMonitorData.prefix()){
+                    if key.starts_with(&PrefixTypeCode::NodeMonitorData.prefix()){
                         info!("{:?}", &key);
                         for mset in monitor_set{
                             if key.contains(mset.value.host.as_str()){
