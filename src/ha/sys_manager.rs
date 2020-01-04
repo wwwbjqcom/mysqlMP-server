@@ -168,7 +168,8 @@ impl MonitorSetting{
     }
 
     pub fn delete(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
-        db.delete(&self.host, &PrefixTypeCode::NodeMonitorSeting.prefix())?;
+        let key = format!("{}:{}", &PrefixTypeCode::NodeMonitorSeting.prefix(), &self.host);
+        db.delete(&key, &CfNameTypeCode::SystemData.get())?;
         Ok(())
     }
 }
