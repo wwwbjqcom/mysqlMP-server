@@ -279,9 +279,10 @@ impl PostCluster{
     fn get_route_info(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>>{
         let mut res_route = ResponseRouteInfo{route: vec![]};
         let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, &self.cluster_name)?;
-        let value: RouteInfo = serde_json::from_str(&kv.value)?;
-        res_route.route.push(value);
-
+        if kv.value.len() > 0 {
+            let value: RouteInfo = serde_json::from_str(&kv.value)?;
+            res_route.route.push(value);
+        }
         Ok(res_route)
     }
 }
