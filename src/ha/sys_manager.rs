@@ -107,7 +107,6 @@ impl MysqlMonitorStatus{
         let prefix = PrefixTypeCode::NodeMonitorData;
         let key = format!("{}_{}", host, &self.time);
         let ms = self.calculation(last_value);
-        info!("{:?}", &ms);
         db.prefix_put(&prefix, &key, &ms)?;
 //        let wb = self.batch(db, host)?;
 //        db.db.write(wb)?;
@@ -272,14 +271,14 @@ pub fn manager(db: web::Data<DbInfo>) {
     }
     loop {
         //if crate::timestamp() - sche_start_time >= (3600000 * 24) {
-        if crate::timestamp() - sche_start_time >= 60 {
-            //每24小时清理一次数据
-            let b = db.clone();
-            thread::spawn(move ||{
-                expired(b);
-            });
-            sche_start_time = crate::timestamp();
-        }
+//        if crate::timestamp() - sche_start_time >= 60 {
+//            //每24小时清理一次数据
+//            let b = db.clone();
+//            thread::spawn(move ||{
+//                expired(b);
+//            });
+//            sche_start_time = crate::timestamp();
+//        }
 
         if crate::timestamp() - loop_start_time >= 60000 {
             //每60秒重新获取一次配置信息
