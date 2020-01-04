@@ -313,14 +313,16 @@ impl DbInfo {
             while iter.valid() {
                 if let Some(v) = iter.key() {
                     let key: String = from_utf8(&v.to_vec())?.parse()?;
-                    info!("{:?}", &key);
-                    for mset in monitor_set{
-                        if key.contains(mset.value.host.as_str()){
-                            let key_info = key.split("_");
-                            let key_info = key_info.collect::<Vec<&str>>();
-                            let time = key_info[1].to_string().parse::<i64>()?;
-                            if &(cur_time - time) > &(one_day_ms * mset.value.days as i64) {
-                                self.delete(&key, &cf_name)?;
+                    if key.starts_with(PrefixTypeCode::NodeMonitorData.prefix()){
+                        info!("{:?}", &key);
+                        for mset in monitor_set{
+                            if key.contains(mset.value.host.as_str()){
+                                let key_info = key.split("_");
+                                let key_info = key_info.collect::<Vec<&str>>();
+                                let time = key_info[1].to_string().parse::<i64>()?;
+                                if &(cur_time - time) > &(one_day_ms * mset.value.days as i64) {
+                                    self.delete(&key, &cf_name)?;
+                                }
                             }
                         }
                     }
