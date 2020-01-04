@@ -46,7 +46,7 @@ pub fn index_file(session: Session) -> Result<NamedFile>{
 
 pub fn session_check(session: Session) -> Result<bool, Box<dyn Error>> {
     if let Some(_session) = session.get::<String>("username")? {
-        info!("{:?}", _session);
+        //info!("{:?}", _session);
         return Ok(true);
     } else {
         return Ok(false);
