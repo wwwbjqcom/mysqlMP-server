@@ -242,6 +242,7 @@ impl GetRouteInfo {
         let mut res_route = ResponseRouteInfo{route: vec![]};
         for cluster in &self.clusters{
             let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
+            if kv.value.len() == 0 {continue;}
             let value: RouteInfo = serde_json::from_str(&kv.value)?;
             res_route.route.push(value);
         }
