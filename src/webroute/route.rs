@@ -37,7 +37,6 @@ pub struct EditInfo {
     pub cluster_name: String,
     pub host: String,
     pub dbport: usize,
-    pub rtype: String,
     pub role: String,
     pub online: bool,
 }

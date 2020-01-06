@@ -169,7 +169,6 @@ impl HostInfoValue {
         self.dbport = info.dbport.clone();
         self.cluster_name = info.cluster_name.clone();
         self.update_time = crate::timestamp();
-        self.rtype = info.rtype.clone();
     }
 
     ///
