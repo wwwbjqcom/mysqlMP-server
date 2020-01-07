@@ -724,7 +724,7 @@ impl SwitchForNodes {
             if state.seconds_behind > 0 { continue; };
             info!("get repl info from new master...");
             //self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
-            self.repl_info = ChangeMasterInfo{master_host:self.host.clone(), master_port:self.dbport.clone(), gtid_set: state.executed_gtid_set.clone()};
+            self.repl_info = ChangeMasterInfo::new(self.host.clone(), self.dbport.clone(), state.executed_gtid_set.clone());
             info!("replication info: {:?}", &self.repl_info);
             break;
         }
@@ -754,7 +754,7 @@ impl SwitchForNodes {
         info!("rollback switch...");
         info!("rollback old master...");
         MyProtocol::SetMaster.send_myself(&self.old_master_info.host)?;
-        self.repl_info = ChangeMasterInfo::new(self.old_master_info.host.clone(), self.old_master_info.dbport.clone());
+        self.repl_info = ChangeMasterInfo::new(self.old_master_info.host.clone(), self.old_master_info.dbport.clone(), "".to_string());
         self.switch_slave()?;
         info!("rollback back new master...");
         MyProtocol::ChangeMaster.change_master(&self.host, &self.repl_info)?;

@@ -474,10 +474,10 @@ pub struct ChangeMasterInfo{
     pub gtid_set: String,
 }
 impl ChangeMasterInfo {
-    pub fn new(host: String, port: usize) -> ChangeMasterInfo {
+    pub fn new(host: String, port: usize, gtid: String) -> ChangeMasterInfo {
         let host_info = host.split(":");
         let host_vec = host_info.collect::<Vec<&str>>();
-        ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: port, gtid_set: "".to_string() }
+        ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: port, gtid_set: gtid }
     }
 }
 
