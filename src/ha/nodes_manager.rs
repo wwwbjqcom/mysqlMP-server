@@ -546,7 +546,7 @@ impl ElectionMaster {
         self.ha_log.recovery_info = RecoveryInfo::new(&self.slave_nodes[index])?;
         self.ha_log.new_master_binlog_info = self.slave_nodes[index].clone();
         info!("Ok");
-        let cm = ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: dbport};
+        let cm = ChangeMasterInfo{ master_host: host_vec[0].to_string(), master_port: dbport, gtid_set: self.ha_log.recovery_info.gtid.clone()};
         return Ok(cm);
     }
 
@@ -633,7 +633,7 @@ impl SwitchForNodes {
             },
 
             slave_nodes_info: vec![],
-            repl_info: ChangeMasterInfo{ master_host: "".to_string(), master_port: 0 },
+            repl_info: ChangeMasterInfo{ master_host: "".to_string(), master_port: 0, gtid_set: "".to_string() },
             success_slave_host: vec![]
         }
     }
@@ -724,7 +724,7 @@ impl SwitchForNodes {
             if state.seconds_behind > 0 { continue; };
             info!("get repl info from new master...");
             //self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
-            self.repl_info = ChangeMasterInfo::new(self.host.clone(), self.dbport.clone());
+            self.repl_info = ChangeMasterInfo{master_host:self.host.clone(), master_port:self.dbport.clone(), gtid_set: state.executed_gtid_set.clone()};
             info!("replication info: {:?}", &self.repl_info);
             break;
         }
