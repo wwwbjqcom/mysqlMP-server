@@ -5,6 +5,7 @@
 pub mod route;
 pub mod new_route;
 pub mod op_value;
+pub mod monitor_route;
 pub mod response;
 
 use actix_web::{http::header, HttpRequest, HttpResponse, Result};

@@ -142,6 +142,7 @@ impl MysqlMonitorStatus{
             threads_running: self.threads_running,
             bytes_sent: (self.bytes_sent - last_value.bytes_sent) / time_dif,
             bytes_received: (self.bytes_received - last_value.bytes_received) / time_dif,
+            slow_queries: (self.slow_queries - last_value.slow_queries) / time_dif,
             time: self.time
         }
     }
@@ -208,6 +209,7 @@ impl MonitorNodeSetInfo{
                 threads_running: 0,
                 bytes_sent: 0,
                 bytes_received: 0,
+                slow_queries: 0,
                 time: 0
             }
         }

@@ -365,6 +365,7 @@ pub struct MysqlState {
     pub sync_binlog: usize,
     pub server_id: usize,
     pub event_scheduler: String,
+    pub innodb_buffer_pool_size: usize,
     pub sql_error: String
 }
 impl MysqlState{
@@ -386,6 +387,7 @@ impl MysqlState{
             sync_binlog: 0,
             server_id: 0,
             event_scheduler: "".to_string(),
+            innodb_buffer_pool_size: 0,
             sql_error: "".to_string()
         }
     }
@@ -604,6 +606,7 @@ pub struct MysqlMonitorStatus{
     pub threads_running: usize,
     pub bytes_sent: usize,
     pub bytes_received: usize,
+    pub slow_queries: usize,
     pub time: i64
 }
 

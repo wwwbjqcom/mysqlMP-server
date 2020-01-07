@@ -5,13 +5,15 @@
 use actix_web::{web};
 use crate::webroute::route::{HostInfo, PostUserInfo, EditInfo, EditMainTain};
 use crate::storage::rocks::{DbInfo, KeyValue, CfNameTypeCode, PrefixTypeCode};
-use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState};
+use crate::ha::procotol::{DownNodeCheck, RecoveryInfo, ReplicationState, MysqlMonitorStatus};
 use std::error::Error;
 use crate::ha::nodes_manager::{SlaveInfo};
 use serde::{Serialize, Deserialize};
 use crate::rand_string;
 use crate::ha::procotol::MysqlState;
 use crate::ha::sys_manager::MonitorSetting;
+use crate::webroute::new_route::ResponseMonitorStatic;
+use std::str::from_utf8;
 
 
 ///
@@ -350,6 +352,49 @@ impl ClusterNodeInfo{
                 let node_info = NodeInfo::new(&state, &node);
                 self.total += 1;
                 self.nodes_info.push(node_info);
+            }
+        }
+        Ok(())
+    }
+
+    ///
+    /// 统计所有节点监控信息， 用于首页展示
+    ///
+    /// 倒叙迭代获取每个节点最后一条数据， 如果每个节点都已获取最后一条数据就退出迭代
+    pub fn static_monitor(&self, db: &web::Data<DbInfo>, rsm: &mut ResponseMonitorStatic) -> Result<(), Box<dyn Error>> {
+        let cf_name = CfNameTypeCode::SystemData.get();
+        let mut tmp: Vec<String> = vec![];
+        if let Some(cf) = db.db.cf_handle(&cf_name){
+            let mut iter = db.db.raw_iterator_cf(cf)?;
+            iter.seek_to_last();
+            iter.prev();
+            'all: while iter.valid() {
+                if tmp.len() == self.nodes_info.len(){
+                    break 'all;
+                }
+                if let Some(s) = iter.key(){
+                    let key: String = from_utf8(&s.to_vec())?.parse()?;
+                    if key.starts_with(&PrefixTypeCode::NodeMonitorData.prefix()){
+                        'b: for n in &self.nodes_info{
+                            if key.contains(n.host.as_str()){
+                                for t in &tmp{
+                                    if t == &n.host{
+                                        break 'b;
+                                    }
+                                }
+                                if let Some(v) = iter.value(){
+                                    let v: MysqlMonitorStatus = serde_json::from_slice(&v)?;
+                                    rsm.update(&v);
+                                    tmp.push(n.host.clone());
+                                }
+                                break 'b;
+                            }
+                        }
+                    }
+                }
+                //
+                //
+                iter.prev();
             }
         }
         Ok(())

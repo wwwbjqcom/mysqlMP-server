@@ -25,7 +25,7 @@ pub enum PrefixTypeCode {
 
 impl PrefixTypeCode {
     pub fn prefix(&self) -> String {
-        let prefix = "crcp".to_string();
+        let prefix = "NfqMSRnnf5jv9v8Ycrcp".to_string();
         match self {
             PrefixTypeCode::RouteInfo => {
                 format!("{}{}",0x01, &prefix)
@@ -373,7 +373,7 @@ fn check_cf_exist(cf_names: &Vec<String>, cf_list: &Vec<String>, db: &mut DB) {
 }
 
 fn set_opts() -> Options {
-    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(5);
+    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(20);
     let mut opts = Options::default();
     opts.set_prefix_extractor(prefix_extractor);
     opts.create_if_missing(true);
