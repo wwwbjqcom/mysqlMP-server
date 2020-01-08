@@ -409,7 +409,7 @@ impl ClusterNodeInfo{
         match a {
             Ok(v) => {
                 if v.value.len() > 0{
-                    let value: MonitorSetting = serde_json::from_str(&v.value)?;
+                    let value: MonitorSetting = serde_json::from_str(&v.value).unwrap();
                     return value.monitor.clone();
                 }
             }
