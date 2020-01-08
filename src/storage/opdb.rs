@@ -382,6 +382,10 @@ impl ClusterNodeInfo{
                                         break 'b;
                                     }
                                 }
+                                if !self.check_monitor_setting(db, &n.host){
+                                    tmp.push(n.host.clone());
+                                    continue 'all;
+                                }
                                 if let Some(v) = iter.value(){
                                     let v: MysqlMonitorStatus = serde_json::from_slice(&v)?;
                                     rsm.update(&v);
@@ -398,6 +402,22 @@ impl ClusterNodeInfo{
             }
         }
         Ok(())
+    }
+
+    fn check_monitor_setting(&self, db: &web::Data<DbInfo>, host: &String) -> bool{
+        let a = db.prefix_get(&PrefixTypeCode::NodeMonitorSeting, host);
+        match a {
+            Ok(v) => {
+                if v.value.len() > 0{
+                    let value: MonitorSetting = serde_json::from_str(&v.value)?;
+                    return value.monitor.clone();
+                }
+            }
+            Err(e) => {
+                info!("{}", e.to_string());
+            }
+        }
+        return false;
     }
 }
 
