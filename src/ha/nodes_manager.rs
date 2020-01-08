@@ -431,6 +431,10 @@ impl ElectionMaster {
                 }
             }
         }
+        if self.slave_nodes.len() == 0{
+            let err = String::from("no normal optional node, exit operation");
+            return Err(err.into());
+        }
         info!("{:?}", &self.slave_nodes);
         Ok(())
     }

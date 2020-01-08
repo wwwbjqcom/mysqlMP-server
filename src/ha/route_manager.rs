@@ -280,7 +280,7 @@ impl AllNode {
                         info!("{:?}", e.to_string());
                     };
                 }
-                Err(e) => {
+                Err(_e) => {
                     //info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
                 }
             }
