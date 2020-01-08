@@ -408,7 +408,8 @@ impl ElectionMaster {
     ///
     /// 获取可以做选举的slave节点信息
     ///
-    /// 宕机及维护状态节点不能做为候选
+    /// 宕机、维护状态、slave线程非正常状态的节点不能做为候选
+    /// 且不会对这些状态的节点进行切换操作
     fn get_slave_nodes(&mut self, db: &web::Data<DbInfo>, result: &Vec<KeyValue>) -> Result<(), Box<dyn Error>> {
         for nodes in result{
             let state: HostInfoValue = serde_json::from_str(&nodes.value)?;
@@ -419,6 +420,10 @@ impl ElectionMaster {
                 if let Err(_e) = check_mainatain(db, &nodes.key){
                     continue;
                 };
+                let v = db.get(&nodes.key, &CfNameTypeCode::NodesState.get())?;
+                let slave_state: MysqlState = serde_json::from_str(&v.value)?;
+                if !slave_state.io_thread{continue;}
+                if !slave_state.sql_thread{continue;}
 
                 if state.cluster_name == self.cluster_name {
                     let s = SlaveInfo::new(nodes.key.clone(), state.dbport.clone(), db)?;
@@ -429,7 +434,6 @@ impl ElectionMaster {
         info!("{:?}", &self.slave_nodes);
         Ok(())
     }
-
 
     ///
     /// 执行切换操作
