@@ -176,6 +176,39 @@ impl MonitorSetting{
 }
 
 
+impl MysqlMonitorStatus{
+    fn new() -> MysqlMonitorStatus{
+        MysqlMonitorStatus{
+            com_insert: 0,
+            com_update: 0,
+            com_delete: 0,
+            com_select: 0,
+            questions: 0,
+            innodb_row_lock_current_waits: 0,
+            innodb_row_lock_time: 0,
+            created_tmp_disk_tables: 0,
+            created_tmp_tables: 0,
+            innodb_buffer_pool_reads: 0,
+            innodb_buffer_pool_read_requests: 0,
+            handler_read_first: 0,
+            handler_read_key: 0,
+            handler_read_next: 0,
+            handler_read_prev: 0,
+            handler_read_rnd: 0,
+            handler_read_rnd_next: 0,
+            innodb_os_log_pending_fsyncs: 0,
+            innodb_os_log_pending_writes: 0,
+            innodb_log_waits: 0,
+            threads_connected: 0,
+            threads_running: 0,
+            bytes_sent: 0,
+            bytes_received: 0,
+            slow_queries: 0,
+            time: 0
+        }
+    }
+}
+
 struct MonitorNodeSetInfo{
     setting: MonitorSetting,            //配置
     last_monitor_value: MysqlMonitorStatus  //上一次检查数据，用于计算差值
@@ -184,34 +217,7 @@ impl MonitorNodeSetInfo{
     fn new(ms: &MonitorSetting) -> MonitorNodeSetInfo{
         MonitorNodeSetInfo{
             setting: ms.clone(),
-            last_monitor_value: MysqlMonitorStatus{
-                com_insert: 0,
-                com_update: 0,
-                com_delete: 0,
-                com_select: 0,
-                questions: 0,
-                innodb_row_lock_current_waits: 0,
-                innodb_row_lock_time: 0,
-                created_tmp_disk_tables: 0,
-                created_tmp_tables: 0,
-                innodb_buffer_pool_reads: 0,
-                innodb_buffer_pool_read_requests: 0,
-                handler_read_first: 0,
-                handler_read_key: 0,
-                handler_read_next: 0,
-                handler_read_prev: 0,
-                handler_read_rnd: 0,
-                handler_read_rnd_next: 0,
-                innodb_os_log_pending_fsyncs: 0,
-                innodb_os_log_pending_writes: 0,
-                innodb_log_waits: 0,
-                threads_connected: 0,
-                threads_running: 0,
-                bytes_sent: 0,
-                bytes_received: 0,
-                slow_queries: 0,
-                time: 0
-            }
+            last_monitor_value: MysqlMonitorStatus::new()
         }
     }
 
@@ -234,6 +240,9 @@ fn monitor(db: &web::Data<DbInfo>, setting: &mut Vec<MonitorNodeSetInfo>) {
     for rw in setting{
         if !rw.setting.monitor{continue;}
         if let Err(e) = rw.monitor_state(db){
+            if rw.last_monitor_value.time != 0{
+                rw.last_monitor_value = MysqlMonitorStatus::new();
+            }
             info!("get monitor data failed({}):{}", &rw.setting.host, e.to_string());
         }
     }
