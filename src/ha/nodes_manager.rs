@@ -741,9 +741,17 @@ impl SwitchForNodes {
         return Ok(());
     }
 
+    ///
+    /// 对所有slave节点执行重新指向， 需等待seconds_behind为0
+    /// 在人工执行切换时需注意是否有节点落后很多的情况
     fn switch_slave(&mut self) -> Result<(), Box<dyn Error>> {
-        for slave in &self.slave_nodes_info {
+        'all: for slave in &self.slave_nodes_info {
             info!("change {}", &slave.host);
+            'one: loop{
+                let state = get_node_state_from_host(&slave.host)?;
+                if state.seconds_behind > 0 { continue 'one; };
+                break 'one;
+            }
             MyProtocol::ChangeMaster.change_master(&slave.host, &self.repl_info)?;
             self.success_slave_host.push(slave.host.clone());
         }
