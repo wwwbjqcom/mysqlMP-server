@@ -234,6 +234,20 @@ impl DbInfo {
 
     }
 
+    ///
+    /// 检查hook_id有效性
+    pub fn check_user_info(&self, hook_id: &String) -> Result<(), Box<dyn Error>> {
+        let result = self.prefix_iterator(&PrefixTypeCode::UserInfo.prefix(), &CfNameTypeCode::SystemData.get())?;
+        for kv in result{
+            let user_info: UserInfo = serde_json::from_str(&kv.value)?;
+            if &user_info.hook_id == hook_id {
+                return Ok(());
+            }
+        }
+        let err = format!("invalid hook_id: {}", hook_id);
+        return Err(err.into());
+    }
+
     pub fn init_admin_user(&self) -> Result<(), Box<dyn Error>> {
         let user_name = "admin".to_string();
         let password = "admin".to_string();
@@ -373,7 +387,7 @@ fn check_cf_exist(cf_names: &Vec<String>, cf_list: &Vec<String>, db: &mut DB) {
 }
 
 fn set_opts() -> Options {
-    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(20);
+    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);
     let mut opts = Options::default();
     opts.set_prefix_extractor(prefix_extractor);
     opts.create_if_missing(true);

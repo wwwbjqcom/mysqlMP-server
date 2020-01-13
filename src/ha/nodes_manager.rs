@@ -376,6 +376,9 @@ impl ElectionMaster {
                     thread::spawn(move||{
                         get_down_state_from_node(&state.host, &my_down_node, my_rt);
                     });
+                    if count >=5 {
+                        break 'insid01;
+                    }
                 }
             }
 

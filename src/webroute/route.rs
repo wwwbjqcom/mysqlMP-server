@@ -237,7 +237,8 @@ impl GetRouteInfo {
     }
 
     pub fn get(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
-        self.check_user_info(db)?;
+//        self.check_user_info(db)?;
+        db.check_user_info(&self.hook_id)?;
         let mut res_route = ResponseRouteInfo{route: vec![]};
         for cluster in &self.clusters{
             let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
@@ -247,17 +248,17 @@ impl GetRouteInfo {
         }
         Ok(res_route)
     }
-    pub fn check_user_info(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        let result = db.prefix_iterator(&PrefixTypeCode::UserInfo.prefix(), &CfNameTypeCode::SystemData.get())?;
-        for kv in result{
-            let user_info: UserInfo = serde_json::from_str(&kv.value)?;
-            if user_info.hook_id == self.hook_id {
-                return Ok(());
-            }
-        }
-        let err = format!("invalid hook_id: {}", &self.hook_id);
-        return Err(err.into());
-    }
+//    pub fn check_user_info(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
+//        let result = db.prefix_iterator(&PrefixTypeCode::UserInfo.prefix(), &CfNameTypeCode::SystemData.get())?;
+//        for kv in result{
+//            let user_info: UserInfo = serde_json::from_str(&kv.value)?;
+//            if user_info.hook_id == self.hook_id {
+//                return Ok(());
+//            }
+//        }
+//        let err = format!("invalid hook_id: {}", &self.hook_id);
+//        return Err(err.into());
+//    }
 }
 
 ///

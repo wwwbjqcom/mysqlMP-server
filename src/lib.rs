@@ -392,7 +392,7 @@ pub fn start_web(db: DbInfo) {
                     )
             )
             .service(
-                web::resource("/getmetricvalue")
+                web::resource("/monitormetricvalue")
                     .route(
                         web::route()
                             .guard(guard::Post())
@@ -402,7 +402,7 @@ pub fn start_web(db: DbInfo) {
             )
             .route("/", web::get().to(webroute::index))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
-            .route("/getmonitormetric", web::post().to(webroute::monitor_route::get_cluster_metric))
+            .route("/get_cluster_metric", web::post().to(webroute::monitor_route::get_cluster_metric))
             .route("/createuser", web::post().to(webroute::route::create_user))
             .route("/getlogdata", web::post().to(webroute::route::switchlog))
             .route("/{filename:.*}", web::get().to(webroute::index_static))

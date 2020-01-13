@@ -181,20 +181,34 @@ impl MysqlMonitorStatus{
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MetricValue{
-    time: i64,
-    value: usize
+    metric: String,
+    value: Vec<Vec<usize>>   // [time, value]
 }
+impl MetricValue{
+    fn new(metric: &String) -> MetricValue{
+        MetricValue{ metric: metric.clone(), value: vec![] }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ResponseMonitorMetricValue{
     monitor_value: Vec<MetricValue>
 }
 impl ResponseMonitorMetricValue{
-    fn new() -> ResponseMonitorMetricValue{
-        ResponseMonitorMetricValue{ monitor_value: vec![] }
+    fn new(metric_list: &Vec<String>) -> ResponseMonitorMetricValue{
+        let mut m_list = vec![];
+        for metric in metric_list{
+            let metricvalue = MetricValue::new(&metric);
+            m_list.push(metricvalue)
+        }
+        ResponseMonitorMetricValue{ monitor_value: m_list }
     }
-    fn init(&mut self, value: &MysqlMonitorStatus, metric: &String) {
-        let mv = MetricValue{time: value.time.clone(), value: value.get_value(metric)};
-        self.monitor_value.push(mv);
+
+    fn init(&mut self, value: &MysqlMonitorStatus) {
+        for metricv in &mut self.monitor_value{
+            let mv = vec![value.time.clone() as usize, value.get_value(&metricv.metric)];
+            metricv.value.push(mv);
+        }
     }
 }
 
@@ -203,14 +217,14 @@ impl ResponseMonitorMetricValue{
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PostMonitorMetricValue{
     host: String,
-    metric: String,
+    metric: Vec<String>,
     start_time: i64,
     stop_time: i64
 }
 impl PostMonitorMetricValue{
     fn get_value(&self, db: &web::Data<DbInfo>) -> Result<ResponseMonitorMetricValue, Box<dyn Error>>{
         let cf_name = CfNameTypeCode::SystemData.get();
-        let mut rmmv = ResponseMonitorMetricValue::new();
+        let mut rmmv = ResponseMonitorMetricValue::new(&self.metric);
         let prefix = format!("{}:{}", PrefixTypeCode::NodeMonitorData.prefix(), &self.host);
         if let Some(cf) = db.db.cf_handle(&cf_name) {
             let iter = db.db.prefix_iterator_cf(cf,&prefix)?;
@@ -219,7 +233,7 @@ impl PostMonitorMetricValue{
                 if !key.starts_with(&prefix){continue;}
                 let value: MysqlMonitorStatus = serde_json::from_slice(&v.to_vec())?;
                 if !self.check_time(&value){continue;}
-                rmmv.init(&value, &self.metric)
+                rmmv.init(&value)
             }
             return Ok(rmmv);
         }

@@ -228,3 +228,38 @@ pub fn get_cluster_total_monitor_route(data: web::Data<DbInfo>, info: web::Json<
         }
     }
 }
+
+
+///
+///
+/// 获取报警信息
+#[derive(Serialize, Deserialize)]
+pub struct PostAlter{
+    pub hook_id: String,
+    pub monitor: bool           // 是否获取监控数据
+}
+#[derive(Serialize, Deserialize)]
+pub struct ResponseDownNodeInfo{
+    host: String,
+    db_down: bool,
+    client_down: bool,
+}
+#[derive(Serialize, Deserialize)]
+pub struct ResponseMonitorAlter{
+    host: String,
+    monitor_data: MysqlMonitorStatus
+}
+#[derive(Serialize, Deserialize)]
+pub struct ResponseAlter{
+    down_node_inf: Vec<ResponseDownNodeInfo>,
+    monitor_data: Vec<ResponseMonitorAlter>
+}
+
+pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> HttpResponse {
+    if let Err(e) = data.check_user_info(&info.hook_id){
+        return ResponseState::error(e.to_string());
+    }
+
+
+    ResponseState::ok()
+}
