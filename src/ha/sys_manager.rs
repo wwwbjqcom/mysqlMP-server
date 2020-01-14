@@ -107,7 +107,7 @@ impl MysqlMonitorStatus{
         let prefix = PrefixTypeCode::NodeMonitorData;
         let key = format!("{}_{}", host, &self.time);
         let ms = self.calculation(last_value);
-        info!("{:?}", &ms);
+        //info!("{:?}", &ms);
         db.prefix_put(&prefix, &key, &ms)?;
 //        let wb = self.batch(db, host)?;
 //        db.db.write(wb)?;
@@ -228,8 +228,7 @@ impl MonitorNodeSetInfo{
 
     fn monitor_state(&mut self, db:&web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let monitor_data = MyProtocol::get_monitor(&MyProtocol::GetMonitor, &self.setting.host)?;
-
-        //info!("{:?}", &monitor_data);
+        info!("{:?}", &monitor_data);
         if self.last_monitor_value.time != 0 {
             monitor_data.save(db, &self.setting.host, &mut self.last_monitor_value)?;
         }
