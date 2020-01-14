@@ -337,4 +337,5 @@ pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> H
             return ResponseState::error(e.to_string());
         }
     }
+    ResponseState::ok()
 }
