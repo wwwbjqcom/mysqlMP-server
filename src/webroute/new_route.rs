@@ -274,9 +274,11 @@ impl ResponseDownNodeInfo{
 
     fn check_down_state(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
         let result = db.get(&self.host, &CfNameTypeCode::CheckState.get())?;
-        let value: CheckState = serde_json::from_str(&result.value)?;
-        self.db_down = value.db_down;
-        self.client_down = value.client_down;
+        if result.value.len() > 0 {
+            let value: CheckState = serde_json::from_str(&result.value)?;
+            self.db_down = value.db_down;
+            self.client_down = value.client_down;
+        }
         Ok(())
     }
 }
@@ -289,7 +291,6 @@ impl ResponseAlter{
     fn new(rows: &Vec<KeyValue>) -> Result<ResponseAlter, Box<dyn Error>>{
         let mut nodes_info = vec![];
         for kv in rows{
-            info!("hostinfovalue: {:?}", &kv.value);
             let state: HostInfoValue = serde_json::from_str(&kv.value)?;
             let rdi = ResponseDownNodeInfo::new(&state);
             nodes_info.push(rdi);
@@ -300,10 +301,9 @@ impl ResponseAlter{
     }
 
     fn init(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
-        let cf_name = CfNameTypeCode::CheckState.get();
+        let cf_name = CfNameTypeCode::NodesState.get();
         for node in &mut self.nodes_info{
             let result = db.get(&node.host, &cf_name)?;
-            info!("mysqlstate: {:?}", &result);
             let value: MysqlState = serde_json::from_str(&result.value)?;
             node.init(db, &value)?;
         }
@@ -325,18 +325,14 @@ impl DbInfo{
 }
 
 pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> HttpResponse {
-    info!("{:?}", &info);
     if let Err(e) = data.check_user_info(&info.hook_id){
         return ResponseState::error(e.to_string());
     }
-    info!("bb");
     match data.get_all_node_state() {
         Ok(response_alter) => {
-            info!("{:?}", &response_alter);
             return response_value(&response_alter);
         }
         Err(e) => {
-            info!("aaa");
             return ResponseState::error(e.to_string());
         }
     }
