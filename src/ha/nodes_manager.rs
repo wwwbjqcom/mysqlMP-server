@@ -353,7 +353,7 @@ impl ElectionMaster {
         Ok(())
     }
 
-    fn save_ha_log(&mut self) -> Result<(), Box<dyn Error>>{
+    fn save_ha_log(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         self.ha_log.recovery_status = false;
         self.ha_log.switch_status = true;
         self.ha_log.save(db)?;
@@ -476,7 +476,7 @@ impl ElectionMaster {
                 self.execute_switch_master(db, &change_master_info)?;
             }
 
-            if let Err(e) = self.save_ha_log(){
+            if let Err(e) = self.save_ha_log(db){
                 info!("{:?}", e.to_string());
             };
         }else if self.check_state.client_down {
