@@ -232,6 +232,7 @@ impl PostMonitorMetricValue{
                 let key: String = from_utf8(&k.to_vec())?.parse()?;
                 if !key.starts_with(&prefix){continue;}
                 let value: MysqlMonitorStatus = serde_json::from_slice(&v.to_vec())?;
+                info!("{:?}", &value);
                 if !self.check_time(&value){continue;}
                 rmmv.init(&value)
             }
@@ -246,7 +247,7 @@ impl PostMonitorMetricValue{
             return false;
         }
         if value.time > self.stop_time{
-            return false;
+            return true;
         }
         return true;
     }
