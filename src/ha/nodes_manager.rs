@@ -346,7 +346,14 @@ impl ElectionMaster {
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
         self.get_slave_nodes(db, &result)?;
         self.check_downnode_status(&result)?;
-        self.change(db)?;
+        if let Err(e) = self.change(db){
+            self.ha_log.save(db)?;
+            return Err(e.into());
+        }
+        Ok(())
+    }
+
+    fn save_ha_log(&mut self) -> Result<(), Box<dyn Error>>{
         self.ha_log.recovery_status = false;
         self.ha_log.switch_status = true;
         self.ha_log.save(db)?;
@@ -468,8 +475,12 @@ impl ElectionMaster {
                 self.reacquire_recovery_info()?;
                 self.execute_switch_master(db, &change_master_info)?;
             }
+
+            if let Err(e) = self.save_ha_log(){
+                info!("{:?}", e.to_string());
+            };
         }else if self.check_state.client_down {
-            info!("host {} client is down, please check", &self.down_node_info.host);
+            info!("host {} ha_client is down, please check", &self.down_node_info.host);
         }
         Ok(())
     }
