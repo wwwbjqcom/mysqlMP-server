@@ -124,7 +124,7 @@ impl MysqlMonitorStatus{
             com_delete: (self.com_delete - last_value.com_delete) / time_dif,
             com_select: (self.com_select - last_value.com_select) / time_dif,
             questions: (self.questions - last_value.questions) / time_dif,
-            innodb_row_lock_current_waits: (self.innodb_row_lock_current_waits - last_value.innodb_row_lock_current_waits) / time_dif,
+            innodb_row_lock_current_waits: self.innodb_row_lock_current_waits,
             innodb_row_lock_time: (self.innodb_row_lock_time - last_value.innodb_row_lock_time) / time_dif,
             created_tmp_disk_tables: (self.created_tmp_disk_tables - last_value.created_tmp_disk_tables) / time_dif,
             created_tmp_tables: (self.created_tmp_tables - last_value.created_tmp_tables) / time_dif,
