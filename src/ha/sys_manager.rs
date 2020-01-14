@@ -107,7 +107,7 @@ impl MysqlMonitorStatus{
         let prefix = PrefixTypeCode::NodeMonitorData;
         let key = format!("{}_{}", host, &self.time);
         let ms = self.calculation(last_value);
-        info!("{:?}", &ms);
+        //info!("{:?}", &ms);
         db.prefix_put(&prefix, &key, &ms)?;
 //        let wb = self.batch(db, host)?;
 //        db.db.write(wb)?;

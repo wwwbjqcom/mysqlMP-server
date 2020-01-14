@@ -251,7 +251,7 @@ pub struct ResponseMonitorAlter{
 }
 #[derive(Serialize, Deserialize)]
 pub struct ResponseAlter{
-    down_node_inf: Vec<ResponseDownNodeInfo>,
+    down_node_info: Vec<ResponseDownNodeInfo>,
     monitor_data: Vec<ResponseMonitorAlter>
 }
 
