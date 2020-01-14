@@ -400,6 +400,15 @@ pub fn start_web(db: DbInfo) {
                             .to(webroute::monitor_route::get_metric_value)
                     )
             )
+            .service(
+                web::resource("/alterinterface")
+                    .route(
+                        web::route()
+                            .guard(guard::Post())
+                            .guard(guard::Header("content-type", "application/json"))
+                            .to(webroute::new_route::alter_interface)
+                    )
+            )
             .route("/", web::get().to(webroute::index))
             .route("/getuserinfo", web::post().to(webroute::route::get_user_info))
             .route("/get_cluster_metric", web::post().to(webroute::monitor_route::get_cluster_metric))

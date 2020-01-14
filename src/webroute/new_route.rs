@@ -5,12 +5,14 @@
 use serde::Serialize;
 use serde::Deserialize;
 use actix_web::{web, HttpResponse};
-use crate::storage::rocks::{DbInfo, PrefixTypeCode};
-use crate::storage::opdb::{ClusterNodeInfo, NodeClusterList, RouteClusterList, SlaveBehindSetting};
+use crate::storage::rocks::{DbInfo, PrefixTypeCode, CfNameTypeCode, KeyValue};
+use crate::storage::opdb::{ClusterNodeInfo, NodeClusterList, RouteClusterList, SlaveBehindSetting, HostInfoValue};
 use crate::webroute::response::{response_value, ResponseState};
 use crate::webroute::op_value::ClusterMonitorInfo;
 use crate::ha::sys_manager::MonitorSetting;
-use crate::ha::procotol::MysqlMonitorStatus;
+use crate::ha::procotol::{MysqlMonitorStatus, MysqlState};
+use std::error::Error;
+use crate::ha::nodes_manager::CheckState;
 
 pub fn get_cluster_list(data: web::Data<DbInfo>) -> HttpResponse {
     let mut respons_list = NodeClusterList::new();
@@ -236,23 +238,88 @@ pub fn get_cluster_total_monitor_route(data: web::Data<DbInfo>, info: web::Json<
 #[derive(Serialize, Deserialize)]
 pub struct PostAlter{
     pub hook_id: String,
-    pub monitor: bool           // 是否获取监控数据
 }
 #[derive(Serialize, Deserialize)]
 pub struct ResponseDownNodeInfo{
-    host: String,
-    db_down: bool,
-    client_down: bool,
+    pub cluster_name: String,
+    pub host: String,
+    pub role: String,
+    pub sql_thread: bool,
+    pub io_thread: bool,
+    pub db_down: bool,
+    pub client_down: bool,
 }
-#[derive(Serialize, Deserialize)]
-pub struct ResponseMonitorAlter{
-    host: String,
-    monitor_data: MysqlMonitorStatus
+impl ResponseDownNodeInfo{
+    fn new(info: &HostInfoValue) -> ResponseDownNodeInfo{
+        ResponseDownNodeInfo{
+            cluster_name: info.cluster_name.clone(),
+            host: info.host.clone(),
+            role: "".to_string(),
+            sql_thread: false,
+            io_thread: false,
+            db_down: false,
+            client_down: false
+        }
+    }
+
+    fn init(&mut self, db: &DbInfo, state: &MysqlState) -> Result<(), Box<dyn Error>>{
+        self.role = state.role.clone();
+        self.sql_thread = state.sql_thread.clone();
+        self.io_thread = state.io_thread.clone();
+        if !state.online{
+            self.check_down_state(db)?;
+        }
+        Ok(())
+    }
+
+    fn check_down_state(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
+        let result = db.get(&self.host, &CfNameTypeCode::CheckState.get())?;
+        let value: CheckState = serde_json::from_str(&result.value)?;
+        self.db_down = value.db_down;
+        self.client_down = value.client_down;
+        Ok(())
+    }
 }
 #[derive(Serialize, Deserialize)]
 pub struct ResponseAlter{
-    down_node_info: Vec<ResponseDownNodeInfo>,
-    monitor_data: Vec<ResponseMonitorAlter>
+    pub nodes_info: Vec<ResponseDownNodeInfo>,
+}
+
+impl ResponseAlter{
+    fn new(rows: &Vec<KeyValue>) -> Result<ResponseAlter, Box<dyn Error>>{
+        let mut nodes_info = vec![];
+        for kv in rows{
+            let state: HostInfoValue = serde_json::from_str(&kv.value)?;
+            let rdi = ResponseDownNodeInfo::new(&state);
+            nodes_info.push(rdi);
+        }
+        Ok(ResponseAlter{
+            nodes_info
+        })
+    }
+
+    fn init(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
+        let cf_name = CfNameTypeCode::CheckState.get();
+        for node in &mut self.nodes_info{
+            let result = db.get(&node.host, &cf_name)?;
+            let value: MysqlState = serde_json::from_str(&result.value)?;
+            node.init(db, &value)?;
+        }
+        Ok(())
+    }
+
+}
+
+impl DbInfo{
+    ///
+    /// 获取所有节点状态信息，用于监控报警
+    fn get_all_node_state(&self) -> Result<ResponseAlter, Box<dyn Error>>{
+        let cf_name = CfNameTypeCode::HaNodesInfo.get();
+        let result = self.iterator(&cf_name, &"".to_string())?;
+        let mut response_alter = ResponseAlter::new(&result)?;
+        response_alter.init(&self)?;
+        Ok(response_alter)
+    }
 }
 
 pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> HttpResponse {
@@ -260,6 +327,12 @@ pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> H
         return ResponseState::error(e.to_string());
     }
 
-
-    ResponseState::ok()
+    match data.get_all_node_state() {
+        Ok(response_alter) => {
+            return response_value(&response_alter);
+        }
+        Err(e) => {
+            return ResponseState::error(e.to_string());
+        }
+    }
 }

@@ -348,6 +348,7 @@ impl DbInfo {
         let a = format!("no cloumnfamily {}", cf_name);
         return  Err(a.into())
     }
+
 }
 
 fn init_db(cf_names: &Vec<String>) -> Result<DB, Box<dyn Error>> {
