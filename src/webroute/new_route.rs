@@ -323,12 +323,14 @@ impl DbInfo{
 }
 
 pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> HttpResponse {
+    info!("{:?}", &info);
     if let Err(e) = data.check_user_info(&info.hook_id){
         return ResponseState::error(e.to_string());
     }
 
     match data.get_all_node_state() {
         Ok(response_alter) => {
+            info!("{:?}", &response_alter);
             return response_value(&response_alter);
         }
         Err(e) => {
