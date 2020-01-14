@@ -235,11 +235,11 @@ pub fn get_cluster_total_monitor_route(data: web::Data<DbInfo>, info: web::Json<
 ///
 ///
 /// 获取报警信息
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PostAlter{
     pub hook_id: String,
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseDownNodeInfo{
     pub cluster_name: String,
     pub host: String,
@@ -280,7 +280,7 @@ impl ResponseDownNodeInfo{
         Ok(())
     }
 }
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseAlter{
     pub nodes_info: Vec<ResponseDownNodeInfo>,
 }
