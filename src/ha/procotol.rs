@@ -366,7 +366,8 @@ pub struct MysqlState {
     pub server_id: usize,
     pub event_scheduler: String,
     pub innodb_buffer_pool_size: usize,
-    pub sql_error: String
+    pub last_sql_error: String,
+    pub last_io_error: String,
 }
 impl MysqlState{
     pub fn new() -> MysqlState{
@@ -388,7 +389,8 @@ impl MysqlState{
             server_id: 0,
             event_scheduler: "".to_string(),
             innodb_buffer_pool_size: 0,
-            sql_error: "".to_string()
+            last_sql_error: "".to_string(),
+            last_io_error: "".to_string(),
         }
     }
 }

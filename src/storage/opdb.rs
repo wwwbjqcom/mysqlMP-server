@@ -299,7 +299,7 @@ pub struct NodeInfo{
 }
 impl NodeInfo{
     pub fn new(state: &MysqlState, node: &HostInfoValue) -> NodeInfo {
-        NodeInfo{
+        let mut ni = NodeInfo{
             cluster_name: node.cluster_name.clone(),
             host: node.host.clone(),
             dbport: node.dbport.clone(),
@@ -317,8 +317,14 @@ impl NodeInfo{
             sync_binlog: state.sync_binlog.clone(),
             server_id: state.server_id.clone(),
             event_scheduler: state.event_scheduler.clone(),
-            sql_error: state.sql_error.clone()
+            sql_error: "".to_string()
+        };
+        if state.last_io_error.len() > 0{
+            ni.sql_error = state.last_io_error.clone();
+        }else if state.last_sql_error.len() > 0 {
+            ni.sql_error = state.last_sql_error.clone();
         }
+        return ni;
     }
 }
 
