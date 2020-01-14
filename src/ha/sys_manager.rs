@@ -136,9 +136,9 @@ impl MysqlMonitorStatus{
             handler_read_prev: (self.handler_read_prev - last_value.handler_read_prev) / time_dif,
             handler_read_rnd: (self.handler_read_rnd - last_value.handler_read_rnd) / time_dif,
             handler_read_rnd_next: (self.handler_read_rnd_next - last_value.handler_read_rnd_next) / time_dif,
-            innodb_os_log_pending_fsyncs: (self.innodb_os_log_pending_fsyncs - last_value.innodb_os_log_pending_fsyncs) / time_dif,
-            innodb_os_log_pending_writes: (self.innodb_os_log_pending_writes - last_value.innodb_os_log_pending_writes) / time_dif,
-            innodb_log_waits: (self.innodb_log_waits - last_value.innodb_log_waits) / time_dif,
+            innodb_os_log_pending_fsyncs: self.innodb_os_log_pending_fsyncs,
+            innodb_os_log_pending_writes: self.innodb_os_log_pending_writes,
+            innodb_log_waits: self.innodb_log_waits,
             threads_connected: self.threads_connected,
             threads_running: self.threads_running,
             bytes_sent: (self.bytes_sent - last_value.bytes_sent) / time_dif,
@@ -228,7 +228,7 @@ impl MonitorNodeSetInfo{
 
     fn monitor_state(&mut self, db:&web::Data<DbInfo>) -> Result<(), Box<dyn Error>>{
         let monitor_data = MyProtocol::get_monitor(&MyProtocol::GetMonitor, &self.setting.host)?;
-        info!("{:?}", &monitor_data);
+        //info!("{:?}", &monitor_data);
         if self.last_monitor_value.time != 0 {
             monitor_data.save(db, &self.setting.host, &mut self.last_monitor_value)?;
         }
