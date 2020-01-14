@@ -289,6 +289,7 @@ impl ResponseAlter{
     fn new(rows: &Vec<KeyValue>) -> Result<ResponseAlter, Box<dyn Error>>{
         let mut nodes_info = vec![];
         for kv in rows{
+            info!("hostinfovalue: {:?}", &kv.value);
             let state: HostInfoValue = serde_json::from_str(&kv.value)?;
             let rdi = ResponseDownNodeInfo::new(&state);
             nodes_info.push(rdi);
@@ -302,6 +303,7 @@ impl ResponseAlter{
         let cf_name = CfNameTypeCode::CheckState.get();
         for node in &mut self.nodes_info{
             let result = db.get(&node.host, &cf_name)?;
+            info!("mysqlstate: {:?}", &result);
             let value: MysqlState = serde_json::from_str(&result.value)?;
             node.init(db, &value)?;
         }
@@ -338,5 +340,4 @@ pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> H
             return ResponseState::error(e.to_string());
         }
     }
-    ResponseState::ok()
 }
