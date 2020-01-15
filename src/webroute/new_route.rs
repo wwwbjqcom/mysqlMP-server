@@ -272,15 +272,15 @@ impl ResponseDownNodeInfo{
         if !state.io_thread{
             self.io_thread = 1
         }
-        if !state.online{
-            self.check_down_state(db)?;
-        }
+//        if !self.online{
+//            self.check_down_state(db)?;
+//        }
         Ok(())
     }
 
     fn check_down_state(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
         let result = db.get(&self.host, &CfNameTypeCode::CheckState.get())?;
-        info!("{:?}",&result);
+        //info!("{:?}",&result);
         if result.value.len() > 0 {
             let value: CheckState = serde_json::from_str(&result.value)?;
             if value.db_down{
@@ -295,17 +295,21 @@ impl ResponseDownNodeInfo{
         Ok(())
     }
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseAlter{
     pub nodes_info: Vec<ResponseDownNodeInfo>,
 }
 
 impl ResponseAlter{
-    fn new(rows: &Vec<KeyValue>) -> Result<ResponseAlter, Box<dyn Error>>{
+    fn new(rows: &Vec<KeyValue>, db: &DbInfo) -> Result<ResponseAlter, Box<dyn Error>>{
         let mut nodes_info = vec![];
         for kv in rows{
             let state: HostInfoValue = serde_json::from_str(&kv.value)?;
-            let rdi = ResponseDownNodeInfo::new(&state);
+            let mut rdi = ResponseDownNodeInfo::new(&state);
+            if !state.online{
+                rdi.check_down_state(db)?;
+            }
             nodes_info.push(rdi);
         }
         Ok(ResponseAlter{
@@ -331,7 +335,7 @@ impl DbInfo{
     fn get_all_node_state(&self) -> Result<ResponseAlter, Box<dyn Error>>{
         let cf_name = CfNameTypeCode::HaNodesInfo.get();
         let result = self.iterator(&cf_name, &"".to_string())?;
-        let mut response_alter = ResponseAlter::new(&result)?;
+        let mut response_alter = ResponseAlter::new(&result, &self)?;
         response_alter.init(&self)?;
         Ok(response_alter)
     }
