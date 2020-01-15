@@ -244,10 +244,10 @@ pub struct ResponseDownNodeInfo{
     pub cluster_name: String,
     pub host: String,
     pub role: String,
-    pub sql_thread: bool,
-    pub io_thread: bool,
-    pub db_down: bool,
-    pub client_down: bool,
+    pub sql_thread: usize,       // 0 代表false, 1代表true
+    pub io_thread: usize,
+    pub db_down: usize,
+    pub client_down: usize,
 }
 impl ResponseDownNodeInfo{
     fn new(info: &HostInfoValue) -> ResponseDownNodeInfo{
@@ -255,17 +255,23 @@ impl ResponseDownNodeInfo{
             cluster_name: info.cluster_name.clone(),
             host: info.host.clone(),
             role: "".to_string(),
-            sql_thread: false,
-            io_thread: false,
-            db_down: false,
-            client_down: false
+            sql_thread: 0,
+            io_thread: 0,
+            db_down: 0,
+            client_down: 0
         }
     }
 
     fn init(&mut self, db: &DbInfo, state: &MysqlState) -> Result<(), Box<dyn Error>>{
         self.role = state.role.clone();
-        self.sql_thread = state.sql_thread.clone();
-        self.io_thread = state.io_thread.clone();
+        if !state.sql_thread{
+            self.sql_thread = 1
+        }
+//        self.sql_thread = state.sql_thread.clone();
+//        self.io_thread = state.io_thread.clone();
+        if !state.io_thread{
+            self.io_thread = 1
+        }
         if !state.online{
             self.check_down_state(db)?;
         }
@@ -276,8 +282,14 @@ impl ResponseDownNodeInfo{
         let result = db.get(&self.host, &CfNameTypeCode::CheckState.get())?;
         if result.value.len() > 0 {
             let value: CheckState = serde_json::from_str(&result.value)?;
-            self.db_down = value.db_down;
-            self.client_down = value.client_down;
+            if value.db_down{
+                self.db_down = 1
+            }
+            if value.client_down{
+                self.client_down = 1
+            }
+//            self.db_down = value.db_down;
+//            self.client_down = value.client_down;
         }
         Ok(())
     }
