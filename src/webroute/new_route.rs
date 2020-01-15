@@ -280,6 +280,7 @@ impl ResponseDownNodeInfo{
 
     fn check_down_state(&mut self, db: &DbInfo) -> Result<(), Box<dyn Error>>{
         let result = db.get(&self.host, &CfNameTypeCode::CheckState.get())?;
+        info!("{:?}",&result);
         if result.value.len() > 0 {
             let value: CheckState = serde_json::from_str(&result.value)?;
             if value.db_down{
