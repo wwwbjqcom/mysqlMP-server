@@ -200,18 +200,6 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
             //let nodes = crate::ha::get_nodes_info(&db);
             let down_node = procotol::DownNodeCheck::new(r.host, r.dbport);
             let mut elc = ElectionMaster::new(r.cluster_name.clone(), down_node);
-            let check_master = elc.is_master(&db);
-            match check_master {
-                Ok(v)=> {
-                    if !v{
-                        info!("host: {} is slave, exece change route info...",&elc.down_node_info.host);
-                        continue;
-                    }
-                }
-                Err(e) => {
-                    info!("{}", e.to_string());
-                }
-            }
             if let Err(e) = elc.election(&db){
                 if let Err(er) = elc.ha_log.save(&db){
                     info!("{}", er.to_string());
@@ -356,8 +344,22 @@ impl ElectionMaster {
 
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
-        self.get_slave_nodes(db, &result)?;
         self.check_downnode_status(&result)?;
+        info!("{:?}", self.check_state);
+        let check_master = self.is_master(&db);
+        match check_master {
+            Ok(v)=> {
+                if !v{
+                    info!("host: {} is slave, exece change route info...",&elc.down_node_info.host);
+                    return Ok(())
+                }
+            }
+            Err(e) => {
+                return Err(e.into())
+            }
+        }
+
+        self.get_slave_nodes(db, &result)?;
         if let Err(e) = self.change(db){
             self.ha_log.save(db)?;
             return Err(e.into());
@@ -425,6 +427,7 @@ impl ElectionMaster {
             }
             thread::sleep(time::Duration::from_secs(1));
         }
+        self.check_state.update_db(&db, &self.down_node_info.host)?;
         Ok(())
     }
 
@@ -466,13 +469,6 @@ impl ElectionMaster {
     /// 执行切换操作
     /// 
     fn change(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
-        info!("{:?}", self.check_state);
-        self.check_state.update_db(&db, &self.down_node_info.host)?;
-//        if !self.is_master(db)?{
-//            info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
-//            return Ok(());
-//        }
-//        info!("{:?}", self.check_state);
         if self.check_state.db_down {
             // mysql实例宕机
             let change_master_info = self.elc_new_master()?;
