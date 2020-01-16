@@ -345,12 +345,13 @@ impl ElectionMaster {
     fn election(&mut self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
         let result = db.iterator(&CfNameTypeCode::HaNodesInfo.get(),&String::from(""))?;
         self.check_downnode_status(&result)?;
+        self.check_state.update_db(db, &self.down_node_info.host)?;
         info!("{:?}", self.check_state);
-        let check_master = self.is_master(&db);
+        let check_master = self.is_master(db);
         match check_master {
             Ok(v)=> {
                 if !v{
-                    info!("host: {} is slave, exece change route info...",&elc.down_node_info.host);
+                    info!("host: {} is slave, exece change route info...",&self.down_node_info.host);
                     return Ok(())
                 }
             }
@@ -427,7 +428,6 @@ impl ElectionMaster {
             }
             thread::sleep(time::Duration::from_secs(1));
         }
-        self.check_state.update_db(&db, &self.down_node_info.host)?;
         Ok(())
     }
 
