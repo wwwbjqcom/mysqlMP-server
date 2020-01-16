@@ -288,19 +288,27 @@ impl AllNode {
     /// 对cluster信息进行循环检查，并把对应route信息写入db
     fn route_manager(&self, db: &web::Data<DbInfo>) {
         for cluster in &self.nodes {
-            let check_state = cluster.route_check(db);
-            match check_state {
-                Ok(rinfo) => {
-                    info!("{:?}",&rinfo);
-                    if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
-                        info!("{:?}", e.to_string());
-                    };
+            self.run_check_state(cluster,db);
+        }
+    }
+
+    fn run_check_state(&self, cluster: &ClusterNodeInfo, db: &web::Data<DbInfo>){
+        let check_state = cluster.route_check(db);
+        match check_state {
+            Ok(rinfo) => {
+                if rinfo.write.host == "".to_string(){
+                    self.run_check_state(cluster, db);
+                    return;
                 }
-                Err(e) => {
-                    //info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
-                }
+                if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
+                    info!("{:?}", e.to_string());
+                };
+            }
+            Err(e) => {
+                //info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
             }
         }
+
     }
 }
 
