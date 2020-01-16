@@ -291,7 +291,7 @@ impl AllNode {
             let check_state = cluster.route_check(db);
             match check_state {
                 Ok(rinfo) => {
-                    info!("{:?}",&rinfo)
+                    info!("{:?}",&rinfo);
                     if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
                         info!("{:?}", e.to_string());
                     };
