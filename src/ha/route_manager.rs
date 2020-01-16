@@ -65,7 +65,7 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
-        //info!("check_status: {}:{:?}", key, result);
+        info!("check_status: {}:{:?}", key, result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
@@ -92,7 +92,7 @@ impl RouteInfo {
             tmp.sort_by(|a, b| b.key.cmp(&a.key));
             let key = tmp[0].key.clone();
             let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
-            //info!("{:?}", value);
+            info!("{:?}", value);
             //判断切换状态， 如果为成功则需再次判断是否已恢复，如果是已恢复状态表示是旧数据
             //因为正常切换恢复和切换之间至少得有时间差， 有可能在进行路由判断时正处在切换的时候
             //这个时候没有切换数据，这里就会获取到最后一条
@@ -189,7 +189,7 @@ impl ClusterNodeInfo {
     /// 对role为master的节点进行判断， 如果为online直接写入信息，如果宕机则需要检查宕机检查数据是否为实例宕机，如果为实例宕机则需要检查是否已经切换
     /// 因为在实例或者client宕机时则不会更新检查状态，所以宕机之前为master如果未恢复则会一直为master状态
     fn master_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<bool, Box<dyn Error>> {
-        //info!("{:?}", node_status);
+        info!("{:?}", node_status);
         if node_status.role == "master".to_string() {
             //info!("master_check: {:?}",node_status);
             if node.value.online {
@@ -291,12 +291,13 @@ impl AllNode {
             let check_state = cluster.route_check(db);
             match check_state {
                 Ok(rinfo) => {
+                    info!("{:?}",&rinfo)
                     if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
                         info!("{:?}", e.to_string());
                     };
                 }
                 Err(e) => {
-                    info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
+                    //info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
                 }
             }
         }
