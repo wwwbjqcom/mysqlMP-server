@@ -65,7 +65,7 @@ impl RouteInfo {
     /// client宕机将直接返回true
     fn check_down_status(&mut self, key: &String, db: &web::Data<DbInfo>, role: String) -> Result<bool, Box<dyn Error>> {
         let result = db.get(key, &CfNameTypeCode::CheckState.get())?;
-        //info!("{}:{:?}", key, result);
+        info!("check_status: {}:{:?}", key, result);
         let value: CheckState = serde_json::from_str(&result.value)?;
         if value.db_down {
             if role == "master".to_string() {
@@ -98,26 +98,33 @@ impl RouteInfo {
             //这个时候没有切换数据，这里就会获取到最后一条
             if value.switch_status{
                 if !value.recovery_status{
+                    //这里继续执行表示最后一条数据未正常恢复
+                    //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
+                    self.check_time_dif(&key)?;
                     return Ok(());
-                }
-            }else {
-                //这里继续执行表示最后一条数据未正常切换
-                //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
-                let tmp_list = key.split("_");
-                let tmp_list = tmp_list.collect::<Vec<&str>>();
-                let tmp_time: i64 = tmp_list[1].to_string().parse()?;
-                if (crate::timestamp() - tmp_time) > 10000 as i64 {
-                    let err = format!("key: {} recovery status unusual", key);
-                    return Err(err.into());
                 }
             }
 
+            //如果表示最后一条所有状态都正常或者未正常切换，比较时间差，超过10秒表示为脏数据不进行操作
+            self.check_time_dif(&key)?;
             //
         }
         //到这里如果还没返回，表示有可能还在切换中返回一个错误不进行操作
         let err = format!("host: {} is master, but status unusual", key);
         return Err(err.into());
     }
+
+    fn check_time_dif(&self, key: &String) -> Result<(), Box<dyn Error>>{
+        let tmp_list = key.split("_");
+        let tmp_list = tmp_list.collect::<Vec<&str>>();
+        let tmp_time: i64 = tmp_list[1].to_string().parse()?;
+        if (crate::timestamp() - tmp_time) > 10000 as i64 {
+            let err = format!("key: {} recovery status unusual", key);
+            return Err(err.into());
+        }
+        Ok(())
+    }
+
 }
 ///
 /// 节点信息
@@ -184,6 +191,7 @@ impl ClusterNodeInfo {
     fn master_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<bool, Box<dyn Error>> {
         //info!("{:?}", node_status);
         if node_status.role == "master".to_string() {
+            info!("master_check: {:?}",node_status);
             if node.value.online {
                 route_info.set_master_info(node);
                 return Ok(true);
