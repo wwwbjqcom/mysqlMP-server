@@ -93,21 +93,28 @@ impl RouteInfo {
             let key = tmp[0].key.clone();
             let value: HaChangeLog = serde_json::from_str(&tmp[0].value)?;
             //info!("{:?}", value);
+            //判断切换状态， 如果为成功则需再次判断是否已恢复，如果是已恢复状态表示是旧数据
+            //因为正常切换恢复和切换之间至少得有时间差， 有可能在进行路由判断时正处在切换的时候
+            //这个时候没有切换数据，这里就会获取到最后一条
             if value.switch_status{
-                return Ok(());
+                if !value.recovery_status{
+                    return Ok(());
+                }
+            }else {
+                //这里继续执行表示最后一条数据未正常切换
+                //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
+                let tmp_list = key.split("_");
+                let tmp_list = tmp_list.collect::<Vec<&str>>();
+                let tmp_time: i64 = tmp_list[1].to_string().parse()?;
+                if (crate::timestamp() - tmp_time) > 10000 as i64 {
+                    let err = format!("key: {} recovery status unusual", key);
+                    return Err(err.into());
+                }
             }
 
-            //这里继续执行表示最后一条数据未正常切换
-            //比较时间， 和当前时间进行比较如果超过10秒表示有可能是脏数据，将不进行操作
-            let tmp_list = key.split("_");
-            let tmp_list = tmp_list.collect::<Vec<&str>>();
-            let tmp_time: i64 = tmp_list[1].to_string().parse()?;
-            if (crate::timestamp() - tmp_time) > 10000 as i64 {
-                let err = format!("key: {} recovery status unusual", key);
-                return Err(err.into());
-            }
             //
         }
+        //到这里如果还没返回，表示有可能还在切换中返回一个错误不进行操作
         let err = format!("host: {} is master, but status unusual", key);
         return Err(err.into());
     }
