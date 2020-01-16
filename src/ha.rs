@@ -42,7 +42,6 @@ impl NodesInfo {
             self.value.online = false;
             self.update_value(db)?;
             self.send_down_info(sender, false);
-
         }
         Ok(())
     }

@@ -262,7 +262,7 @@ impl ResponseDownNodeInfo{
         }
     }
 
-    fn init(&mut self, db: &DbInfo, state: &MysqlState) -> Result<(), Box<dyn Error>>{
+    fn init(&mut self, state: &MysqlState) -> Result<(), Box<dyn Error>>{
         self.role = state.role.clone();
         if !state.sql_thread{
             self.sql_thread = 1
@@ -322,7 +322,7 @@ impl ResponseAlter{
         for node in &mut self.nodes_info{
             let result = db.get(&node.host, &cf_name)?;
             let value: MysqlState = serde_json::from_str(&result.value)?;
-            node.init(db, &value)?;
+            node.init(&value)?;
         }
         Ok(())
     }
