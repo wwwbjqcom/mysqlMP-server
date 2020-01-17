@@ -390,6 +390,8 @@ fn check_cf_exist(cf_names: &Vec<String>, cf_list: &Vec<String>, db: &mut DB) {
 fn set_opts() -> Options {
     let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);
     let mut opts = Options::default();
+    opts.enable_statistics();
+    opts.set_stats_dump_period_sec(10);
     opts.set_prefix_extractor(prefix_extractor);
     opts.create_if_missing(true);
     opts.set_max_open_files(10000);
