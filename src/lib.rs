@@ -421,6 +421,7 @@ pub fn start_web(db: DbInfo) {
                     .to(|| HttpResponse::MethodNotAllowed()),
             )
     })
+        .workers(10)
         .bind_ssl(listen_info, builder)
         .unwrap()
         .run()
