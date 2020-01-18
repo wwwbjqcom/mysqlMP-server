@@ -216,6 +216,7 @@ pub struct ResponseRouteInfo {
 /// 获取集群对应路由关系的请求包
 #[derive(Serialize, Deserialize)]
 pub struct GetRouteInfo {
+    pub user_name: String,
     pub hook_id: String,
     pub clusters: Vec<String>,
 }
@@ -238,7 +239,7 @@ impl GetRouteInfo {
 
     pub fn get(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
 //        self.check_user_info(db)?;
-        //db.check_user_info(&self.hook_id)?;
+        db.check_user_info(&self.hook_id, &self.user_name)?;
         let mut res_route = ResponseRouteInfo{route: vec![]};
         for cluster in &self.clusters{
             let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
