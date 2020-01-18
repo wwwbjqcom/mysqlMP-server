@@ -238,14 +238,14 @@ impl GetRouteInfo {
 
     pub fn get(&self, db: &web::Data<DbInfo>) -> Result<ResponseRouteInfo, Box<dyn Error>> {
 //        self.check_user_info(db)?;
-        db.check_user_info(&self.hook_id)?;
+        //db.check_user_info(&self.hook_id)?;
         let mut res_route = ResponseRouteInfo{route: vec![]};
-//        for cluster in &self.clusters{
-//            let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
-//            if kv.value.len() == 0 {continue;}
-//            let value: RouteInfo = serde_json::from_str(&kv.value)?;
-//            res_route.route.push(value);
-//        }
+        for cluster in &self.clusters{
+            let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
+            if kv.value.len() == 0 {continue;}
+            let value: RouteInfo = serde_json::from_str(&kv.value)?;
+            res_route.route.push(value);
+        }
         Ok(res_route)
     }
 //    pub fn check_user_info(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
