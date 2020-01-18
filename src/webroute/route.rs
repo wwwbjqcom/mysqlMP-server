@@ -240,12 +240,12 @@ impl GetRouteInfo {
 //        self.check_user_info(db)?;
         db.check_user_info(&self.hook_id)?;
         let mut res_route = ResponseRouteInfo{route: vec![]};
-        for cluster in &self.clusters{
-            let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
-            if kv.value.len() == 0 {continue;}
-            let value: RouteInfo = serde_json::from_str(&kv.value)?;
-            res_route.route.push(value);
-        }
+//        for cluster in &self.clusters{
+//            let kv = db.prefix_get(&PrefixTypeCode::RouteInfo, cluster)?;
+//            if kv.value.len() == 0 {continue;}
+//            let value: RouteInfo = serde_json::from_str(&kv.value)?;
+//            res_route.route.push(value);
+//        }
         Ok(res_route)
     }
 //    pub fn check_user_info(&self, db: &web::Data<DbInfo>) -> Result<(), Box<dyn Error>> {
@@ -265,16 +265,16 @@ impl GetRouteInfo {
 /// 获取mysql路由信息
 pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> HttpResponse {
     //let info = GetRouteInfo{hook_id: info.hook_id.clone(), clusters: info.clusters.clone()};
-//    let v = info.get(&db);
-//    match v {
-//        Ok(rinfo) => {
-//            return response_value(&rinfo);
-//        }
-//        Err(e) => {
-//            return ResponseState::error(e.to_string());
-//        }
-//    }
-    return ResponseState::ok()
+    let v = info.get(&db);
+    match v {
+        Ok(rinfo) => {
+            return response_value(&rinfo);
+        }
+        Err(e) => {
+            return ResponseState::error(e.to_string());
+        }
+    }
+
 }
 
 impl PostCluster{
