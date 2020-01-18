@@ -265,15 +265,16 @@ impl GetRouteInfo {
 /// 获取mysql路由信息
 pub fn get_route_info(db: web::Data<DbInfo>, info: web::Json<GetRouteInfo>) -> HttpResponse {
     //let info = GetRouteInfo{hook_id: info.hook_id.clone(), clusters: info.clusters.clone()};
-    let v = info.get(&db);
-    match v {
-        Ok(rinfo) => {
-            return response_value(&rinfo);
-        }
-        Err(e) => {
-            return ResponseState::error(e.to_string());
-        }
-    }
+//    let v = info.get(&db);
+//    match v {
+//        Ok(rinfo) => {
+//            return response_value(&rinfo);
+//        }
+//        Err(e) => {
+//            return ResponseState::error(e.to_string());
+//        }
+//    }
+    return ResponseState::ok()
 }
 
 impl PostCluster{
