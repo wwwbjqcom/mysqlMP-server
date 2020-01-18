@@ -297,6 +297,7 @@ impl AllNode {
         match check_state {
             Ok(rinfo) => {
                 if rinfo.write.host == "".to_string(){
+                    thread::sleep(time::Duration::from_secs(1));
                     self.run_check_state(cluster, db);
                     return;
                 }
