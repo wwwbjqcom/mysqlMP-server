@@ -237,7 +237,6 @@ pub fn get_cluster_total_monitor_route(data: web::Data<DbInfo>, info: web::Json<
 /// 获取报警信息
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PostAlter{
-    pub user_name: String,
     pub hook_id: String,
 }
 #[derive(Serialize, Deserialize, Debug)]
@@ -343,7 +342,7 @@ impl DbInfo{
 }
 
 pub fn alter_interface(data: web::Data<DbInfo>, info: web::Json<PostAlter>) -> HttpResponse {
-    if let Err(e) = data.check_user_info(&info.hook_id, &info.user_name){
+    if let Err(e) = data.check_user_info(&info.hook_id){
         return ResponseState::error(e.to_string());
     }
     match data.get_all_node_state() {

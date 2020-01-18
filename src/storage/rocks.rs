@@ -236,8 +236,8 @@ impl DbInfo {
 
     ///
     /// 检查hook_id有效性
-    pub fn check_user_info(&self, hook_id: &String, user_name: &String) -> Result<(), Box<dyn Error>> {
-        let result = self.prefix_get(&PrefixTypeCode::UserInfo, user_name)?;
+    pub fn check_user_info(&self, hook_id: &String) -> Result<(), Box<dyn Error>> {
+        let result = self.prefix_get(&PrefixTypeCode::UserInfo, &String::from("admin"))?;
         let user_info: UserInfo = serde_json::from_str(&result.value)?;
         if &user_info.hook_id == hook_id {
             return Ok(());
