@@ -370,6 +370,13 @@ impl ClusterNodeInfo{
     pub fn static_monitor(&self, db: &web::Data<DbInfo>, rsm: &mut ResponseMonitorStatic) -> Result<(), Box<dyn Error>> {
         let cf_name = CfNameTypeCode::SystemData.get();
         let mut tmp: Vec<String> = vec![];
+        //首先检查是否开启监控
+        for node in &self.nodes_info{
+            if !self.check_monitor_setting(db, &node.host){
+                tmp.push(n.host.clone());
+            }
+        }
+
         if let Some(cf) = db.db.cf_handle(&cf_name){
             let mut iter = db.db.raw_iterator_cf(cf)?;
             iter.seek_to_last();
@@ -387,10 +394,6 @@ impl ClusterNodeInfo{
                                     if t == &n.host{
                                         break 'b;
                                     }
-                                }
-                                if !self.check_monitor_setting(db, &n.host){
-                                    tmp.push(n.host.clone());
-                                    continue 'all;
                                 }
                                 if let Some(v) = iter.value(){
                                     let v: MysqlMonitorStatus = serde_json::from_slice(&v)?;

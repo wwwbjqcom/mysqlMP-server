@@ -201,16 +201,16 @@ pub fn get_cluster_total_monitor(data: web::Data<DbInfo>, info: web::Json<PostCl
         return ResponseState::error(e.to_string());
     }
     let mut rms = ResponseMonitorStatic::new();
-    return response_value(&rms);
-//    let res = cluster_info.static_monitor(&data, &mut rms);
-//    match res {
-//        Ok(_v) => {
-//            return response_value(&rms.get_total_a());
-//        }
-//        Err(e) => {
-//            return ResponseState::error(e.to_string());
-//        }
-//    }
+
+    let res = cluster_info.static_monitor(&data, &mut rms);
+    match res {
+        Ok(_v) => {
+            return response_value(&rms.get_total_a());
+        }
+        Err(e) => {
+            return ResponseState::error(e.to_string());
+        }
+    }
 }
 
 ///
