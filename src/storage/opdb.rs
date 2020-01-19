@@ -373,7 +373,7 @@ impl ClusterNodeInfo{
         //首先检查是否开启监控
         for node in &self.nodes_info{
             if !self.check_monitor_setting(db, &node.host){
-                tmp.push(n.host.clone());
+                tmp.push(node.host.clone());
             }
         }
 
