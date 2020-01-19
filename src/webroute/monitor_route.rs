@@ -225,6 +225,9 @@ impl PostMonitorMetricValue{
     fn get_value(&self, db: &web::Data<DbInfo>) -> Result<ResponseMonitorMetricValue, Box<dyn Error>>{
         let cf_name = CfNameTypeCode::SystemData.get();
         let mut rmmv = ResponseMonitorMetricValue::new(&self.metric);
+        if self.host == "".to_string(){
+            return Ok(rmmv);
+        }
         let prefix = format!("{}:{}", PrefixTypeCode::NodeMonitorData.prefix(), &self.host);
         if let Some(cf) = db.db.cf_handle(&cf_name) {
             let iter = db.db.prefix_iterator_cf(cf,&prefix)?;
