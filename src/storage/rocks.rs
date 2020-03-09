@@ -388,6 +388,7 @@ fn check_cf_exist(cf_names: &Vec<String>, cf_list: &Vec<String>, db: &mut DB) {
 fn set_opts() -> Options {
     let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);
     let mut opts = Options::default();
+
     opts.set_table_cache_num_shard_bits(62914560);
     opts.enable_statistics();
     //opts.set_stats_dump_period_sec(10);
@@ -407,7 +408,7 @@ fn set_opts() -> Options {
     opts.set_compaction_style(DBCompactionStyle::Universal);
     opts.set_max_background_compactions(4);
     opts.set_max_background_flushes(4);
-    opts.set_disable_auto_compactions(true);
+    opts.set_disable_auto_compactions(false);
     return opts;
 }
 
