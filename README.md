@@ -35,6 +35,9 @@
   
 clusters: 为集群名列表， 可以同时获取多个      
 hook_id: 登陆web页面后在用户信息处获取到      
+
+### 状态信息获取: 可以通过api方式获取所有client/server/mysql的部分状态，可用于报警，方法如下：
+获取方式和路由获取相同，唯一不同的就url：https://127.0.0.1:8099/getrouteinfo
         
 ### 注意事项: 1. 主从复制只支持gtid模式，不支持binlog+position的方式     
 2. 仅支持master-slave管理  
