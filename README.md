@@ -32,9 +32,10 @@
     >  import requests,json 
     >  url = 'https://127.0.0.1:8099/getrouteinfo' 
     >  d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ', 'clusters': ['test']} 
-    >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) > print(r.text)  
+    >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) 
+    >  print(r.text)  
 
-  
+
 clusters: 为集群名列表， 可以同时获取多个      
 hook_id: 登陆web页面后在用户信息处获取到      
 
@@ -43,7 +44,8 @@ hook_id: 登陆web页面后在用户信息处获取到
     >  import requests,json 
     >  url = 'https://127.0.0.1:8099/alterinterface' 
     >  d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ'} 
-    >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) > print(r.text)  
+    >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) 
+    >  print(r.text)  
         
 ### 注意事项: 1. 主从复制只支持gtid模式，不支持binlog+position的方式     
 2. 仅支持master-slave管理  
