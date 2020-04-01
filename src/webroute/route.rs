@@ -66,20 +66,54 @@ pub struct EditMainTain{
     pub maintain: String
 }
 
+impl EditMainTain{
+    pub fn check_role(&self, data: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>>{
+        let status =  data.get(&self.host, &CfNameTypeCode::NodesState.get())?;
+        if status.value.len() > 0{
+            let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
+            if cur_status.role == "master".to_string(){
+                if self.check_state(data)?{
+                    return Ok(false);
+                }
+                return Ok(true);
+            }
+        }
+        return Ok(true);
+    }
+
+    pub fn check_state(&self, data: &web::Data<DbInfo>) -> Result<bool, Box<dyn Error>>{
+        let result = data.iterator(&CfNameTypeCode::HaNodesInfo.get(), &self.host)?;
+        for row in &result {
+            let node: HostInfoValue = serde_json::from_str(&row.value)?;
+            if node.online{
+                return Ok(true);
+            }
+            return Ok(false);
+        }
+        return Ok(false);
+    }
+}
+
 pub fn edit_maintain(data: web::Data<DbInfo>, info: web::Json<EditMainTain>) -> HttpResponse {
     let cf_name = String::from("Ha_nodes_info");
     let key = &info.host;
     //检查master状态
-    if let Ok(status) = data.get(&key, &CfNameTypeCode::NodesState.get()){
-        if status.value.len() > 0 {
-            let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
-            if cur_status.role == "master".to_string(){
-                if cur_status.online{
-                    return ResponseState::error("the master node cannot be set to maintenance mode".to_string());
-                }
-            }
+//    if let Ok(status) = data.get(&key, &CfNameTypeCode::NodesState.get()){
+//        if status.value.len() > 0 {
+//            let cur_status: MysqlState = serde_json::from_str(&status.value).unwrap();
+//            if cur_status.role == "master".to_string(){
+//                if cur_status.online{
+//                    return ResponseState::error("the master node cannot be set to maintenance mode".to_string());
+//                }
+//            }
+//        }
+//    };
+    //检查设置节点的角色和状态
+    if let Ok(status) = info.check_role(&data){
+        if !status{
+            return ResponseState::error("the master node cannot be set to maintenance mode".to_string());
         }
-    };
+    }
     //设置模式
     let cur_value = data.get(key, &cf_name);
     match cur_value {
