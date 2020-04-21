@@ -195,6 +195,7 @@ pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
     loop {
         let r = rec.recv().unwrap();
         if !r.online {
+
             info!("host {:?} is down for cluster {:?}....", r.host, r.cluster_name);
             info!("check network......");
             //let nodes = crate::ha::get_nodes_info(&db);
@@ -381,6 +382,7 @@ impl ElectionMaster {
     /// 如果db_down为true将复检三次以判断是否为网络故障
     fn check_downnode_status(&mut self, result: &Vec<KeyValue>) -> Result<(), Box<dyn Error>> {
         'out: for _i in 0..3 {
+            thread::sleep(time::Duration::from_secs(1));
             let (rt, rc) = mpsc::channel();
             let rt= Arc::new(Mutex::new(rt));
             let mut count = 0 as usize;
@@ -426,7 +428,6 @@ impl ElectionMaster {
                     return Ok(());
                 }
             }
-            thread::sleep(time::Duration::from_secs(1));
         }
         Ok(())
     }
