@@ -423,8 +423,8 @@ pub fn start_web(db: DbInfo) {
     })
         .bind_ssl(listen_info, builder)
         .unwrap()
-        .bind(listen_info)
-        .unwrap()
+//        .bind(listen_info)
+//        .unwrap()
         .run()
         .unwrap();
 }
