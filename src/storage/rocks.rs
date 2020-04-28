@@ -159,7 +159,7 @@ impl DbInfo {
     pub fn iterator(&self, cf_name: &String, seek_to: &String) -> Result<Vec<KeyValue>, Box<dyn Error>> {
         self.check_cf(cf_name)?;
         if let Some(cf) = self.db.cf_handle(cf_name){
-            let mut iter = self.db.raw_iterator_cf(cf)?;
+            let mut iter = self.db.raw_iterator_cf(cf);
             if seek_to.len() > 0 {
                 iter.seek(seek_to);
             }else {
@@ -190,7 +190,7 @@ impl DbInfo {
     pub fn prefix_iterator(&self, prefix: &String, cf_name: &String) -> Result<Vec<KeyValue>, Box<dyn Error>> {
         self.check_cf(cf_name)?;
         if let Some(cf) = self.db.cf_handle(cf_name) {
-            let iter = self.db.prefix_iterator_cf(cf,prefix)?;
+            let iter = self.db.prefix_iterator_cf(cf,prefix);
             let mut values: Vec<KeyValue> = vec![];
             for (k, v) in iter {
                 let key: String = from_utf8(&k.to_vec())?.parse()?;
@@ -321,7 +321,7 @@ impl DbInfo {
         let cf_name = CfNameTypeCode::SystemData.get();
         self.check_cf(&cf_name)?;
         if let Some(cf) = self.db.cf_handle(&cf_name){
-            let mut iter = self.db.raw_iterator_cf(cf)?;
+            let mut iter = self.db.raw_iterator_cf(cf);
             iter.seek_to_first();
             while iter.valid() {
                 if let Some(v) = iter.key() {

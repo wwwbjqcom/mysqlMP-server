@@ -230,7 +230,7 @@ impl PostMonitorMetricValue{
         }
         let prefix = format!("{}:{}", PrefixTypeCode::NodeMonitorData.prefix(), &self.host);
         if let Some(cf) = db.db.cf_handle(&cf_name) {
-            let iter = db.db.prefix_iterator_cf(cf,&prefix)?;
+            let iter = db.db.prefix_iterator_cf(cf,&prefix);
             for (k, v) in iter {
                 let key: String = from_utf8(&k.to_vec())?.parse()?;
                 if !key.starts_with(&prefix){continue;}

@@ -378,7 +378,7 @@ impl ClusterNodeInfo{
         }
 
         if let Some(cf) = db.db.cf_handle(&cf_name){
-            let mut iter = db.db.raw_iterator_cf(cf)?;
+            let mut iter = db.db.raw_iterator_cf(cf);
             iter.seek_to_last();
             iter.prev();
             'all: while iter.valid() {
