@@ -4,6 +4,7 @@
 */
 
 use rocksdb::{DB, Options, DBCompactionStyle, MemtableFactory, BlockBasedOptions};
+use rocksdb::{BlockBasedIndexType, PlainTableFactoryOptions, DataBlockIndexType};
 use std::error::Error;
 use std::str::from_utf8;
 use serde::{Deserialize, Serialize};
