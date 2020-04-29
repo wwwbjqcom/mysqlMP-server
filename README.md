@@ -22,7 +22,7 @@
 ## 使用方法： 下载源码进行编译，或者下载最新release下的可执行文件。有两个参数项: 1. listen  监听地址，默认:127.0.0.1       
  2. port    监听端口， 默认8099      
       
-同时下载[web项目](https://github.com/wwwbjqcom/mysqlMP-web)， 把可执行文件放于web目录直接运行即可，然后就可以在浏览器输入https://127.0.0.1:8099进行操作，初始用户名密码为admin/admin。      
+同时下载[web项目](https://github.com/wwwbjqcom/mysqlMP-web)， 把可执行文件放于web目录直接运行即可，然后就可以在浏览器输入http://127.0.0.1:8099进行操作，初始用户名密码为admin/admin。      
       
 添加的数据库节点需配合[mysqlMP-client](https://github.com/wwwbjqcom/mysqlMP-client)使用。      
         
@@ -30,7 +30,7 @@
    
 
     >  import requests,json 
-    >  url = 'https://127.0.0.1:8099/getrouteinfo' 
+    >  url = 'http://127.0.0.1:8099/getrouteinfo' 
     >  d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ', 'clusters': ['test']} 
     >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) 
     >  print(r.text)  
@@ -42,7 +42,7 @@ hook_id: 登陆web页面后在用户信息处获取到
 ### 状态信息获取: 可以通过api方式获取所有client/server/mysql的部分状态，可用于报警，方法如下：
 
     >  import requests,json 
-    >  url = 'https://127.0.0.1:8099/alterinterface' 
+    >  url = 'http://127.0.0.1:8099/alterinterface' 
     >  d = {'hook_id':'w2OLkdO212qs6zXzlAWj0P8rzYKa4PxZ'} 
     >  r = requests.post(url, data=json.dumps(d), headers={'Content-Type': 'application/json'},verify=False) 
     >  print(r.text)  
