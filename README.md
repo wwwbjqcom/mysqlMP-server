@@ -1,11 +1,11 @@
 
+
   
     
       
 # mysqlMP-server        
  mysql高可用管理        
-        
-        
+                
 # 功能        
 1. 主从高可用管理      
  2. 手动切换主从关系      
@@ -17,15 +17,17 @@
  8. 慢日志管理（开发中）      
  9. sql审计管理 （开发中）    
  10. mysql运行状态监控     
-        
-        
+                
 ## 使用方法： 下载源码进行编译，或者下载最新release下的可执行文件。有两个参数项: 1. listen  监听地址，默认:127.0.0.1       
  2. port    监听端口， 默认8099      
       
 同时下载[web项目](https://github.com/wwwbjqcom/mysqlMP-web)， 把可执行文件放于web目录直接运行即可，然后就可以在浏览器输入http://127.0.0.1:8099进行操作，初始用户名密码为admin/admin。      
-      
-添加的数据库节点需配合[mysqlMP-client](https://github.com/wwwbjqcom/mysqlMP-client)使用。      
-        
+
+![enter image description here](https://i.niupic.com/images/2020/08/05/8uG0.png)  
+
+添加的数据库节点需配合[mysqlMP-client](https://github.com/wwwbjqcom/mysqlMP-client)使用。
+
+![enter image description here](https://i.niupic.com/images/2020/08/05/8uG1.png)        
 ### 读写路由获取: 读写路由关系通过api接口的方式获取，例如我使用py进行获取，方法如下：      
    
 
