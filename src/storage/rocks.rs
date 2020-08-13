@@ -415,51 +415,75 @@ fn check_cf_exist(cf_names: &Vec<String>, cf_list: &Vec<String>, db: &mut DB) {
 //}
 
 fn set_opts() -> Options {
-    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);//设置前缀长度
+//     let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);//设置前缀长度
+//     let mut opts = Options::default();
+//
+//     //blockbasedoption设置
+//     let mut block_option = BlockBasedOptions::default();
+//     block_option.set_cache_index_and_filter_blocks(true);//开启缓存bloom过滤器到内存
+//     block_option.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);//hash索引查找
+//     opts.set_block_based_table_factory(&block_option);
+//     //plaintable
+// //    let plain_table_option = PlainTableFactoryOptions{
+// //        user_key_length: 0,
+// //        bloom_bits_per_key: 10,
+// //        hash_table_ratio: 0.75,
+// //        index_sparseness: 16
+// //    };
+// //    opts.set_plain_table_factory(&plain_table_option);
+//
+//     //memorytable
+//     let factory  =  MemtableFactory :: HashSkipList {
+//         bucket_count : 1_000_000,
+//         height : 4,
+//         branching_factor : 4
+//     };
+//     opts.set_memtable_factory(factory);
+//     opts.set_allow_concurrent_memtable_write(false);
+//
+//
+//     opts.set_optimize_filters_for_hits(true);//开启bloom过滤器
+//
+//     opts.set_table_cache_num_shard_bits(62914560);
+//     opts.enable_statistics();
+//     //opts.set_stats_dump_period_sec(10);
+//
+//     opts.set_prefix_extractor(prefix_extractor);//设置前缀过滤
+//     opts.create_if_missing(true);
+//     opts.set_max_open_files(10000);
+//     opts.set_use_fsync(false);
+//     opts.set_bytes_per_sync(8388608);
+//     opts.optimize_for_point_lookup(1024);
+//     opts.set_table_cache_num_shard_bits(6);
+//
+//     opts.set_max_write_buffer_number(32);
+//     opts.set_write_buffer_size(536870912);
+//     opts.set_min_write_buffer_number(4);
+//
+//     opts.set_target_file_size_base(1073741824);
+//     opts.set_min_write_buffer_number_to_merge(4);
+//     opts.set_level_zero_stop_writes_trigger(2000);
+//     opts.set_level_zero_slowdown_writes_trigger(0);
+//     opts.set_compaction_style(DBCompactionStyle::Universal);
+//     opts.set_max_background_compactions(4);
+//     opts.set_max_background_flushes(4);
+//     opts.set_disable_auto_compactions(false);
+//     return opts;
+    let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(21);
     let mut opts = Options::default();
-
-    //blockbasedoption设置
-    let mut block_option = BlockBasedOptions::default();
-    block_option.set_cache_index_and_filter_blocks(true);//开启缓存bloom过滤器到内存
-    block_option.set_data_block_index_type(DataBlockIndexType::BinaryAndHash);//hash索引查找
-    opts.set_block_based_table_factory(&block_option);
-    //plaintable
-//    let plain_table_option = PlainTableFactoryOptions{
-//        user_key_length: 0,
-//        bloom_bits_per_key: 10,
-//        hash_table_ratio: 0.75,
-//        index_sparseness: 16
-//    };
-//    opts.set_plain_table_factory(&plain_table_option);
-
-    //memorytable
-    let factory  =  MemtableFactory :: HashSkipList {
-        bucket_count : 1_000_000,
-        height : 4,
-        branching_factor : 4
-    };
-    opts.set_memtable_factory(factory);
-    opts.set_allow_concurrent_memtable_write(false);
-
-
-    opts.set_optimize_filters_for_hits(true);//开启bloom过滤器
 
     opts.set_table_cache_num_shard_bits(62914560);
     opts.enable_statistics();
     //opts.set_stats_dump_period_sec(10);
-
-    opts.set_prefix_extractor(prefix_extractor);//设置前缀过滤
+    opts.set_prefix_extractor(prefix_extractor);
     opts.create_if_missing(true);
     opts.set_max_open_files(10000);
     opts.set_use_fsync(false);
     opts.set_bytes_per_sync(8388608);
     opts.optimize_for_point_lookup(1024);
     opts.set_table_cache_num_shard_bits(6);
-
     opts.set_max_write_buffer_number(32);
     opts.set_write_buffer_size(536870912);
-    opts.set_min_write_buffer_number(4);
-
     opts.set_target_file_size_base(1073741824);
     opts.set_min_write_buffer_number_to_merge(4);
     opts.set_level_zero_stop_writes_trigger(2000);
