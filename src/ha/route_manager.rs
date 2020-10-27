@@ -294,6 +294,7 @@ impl AllNode {
 
     fn run_check_state(&self, cluster: &ClusterNodeInfo, db: &web::Data<DbInfo>){
         let check_state = cluster.route_check(db);
+        // info!("{:?}", check_state);
         match check_state {
             Ok(rinfo) => {
                 if rinfo.write.host == "".to_string(){

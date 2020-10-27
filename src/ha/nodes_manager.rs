@@ -754,6 +754,7 @@ impl SwitchForNodes {
         loop {
             let state = get_node_state_from_host(&self.host)?;
             if state.seconds_behind > 0 { continue; };
+            if state.read_master_log_pos - state.exec_master_log_pos > 0 { continue; };
             info!("get repl info from new master...");
             //self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
             self.repl_info = ChangeMasterInfo::new(self.host.clone(), self.dbport.clone(), state.executed_gtid_set.clone());
