@@ -316,6 +316,7 @@ impl AllNode {
 
 
 pub fn manager(db: web::Data<DbInfo>) {
+    info!("router manager thread start success");
     let mut all_node = AllNode::new(&db).unwrap();
     let mut start_time = crate::timestamp();
     loop {

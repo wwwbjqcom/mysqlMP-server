@@ -192,6 +192,7 @@ impl CheckState {
 ///主要负责master宕机时新节点选举及切换、追加日志操作
 ///
 pub fn manager(db: web::Data<DbInfo>,  rec: mpsc::Receiver<DownNodeInfo>){
+    info!("switch manager thread start success");
     loop {
         let r = rec.recv().unwrap();
         if !r.online {

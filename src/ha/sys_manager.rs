@@ -275,6 +275,7 @@ fn expired(db: web::Data<DbInfo>){
 }
 
 pub fn manager(db: web::Data<DbInfo>) {
+    info!("database purge thread start success");
     let mut sche_start_time = crate::timestamp();
     let mut loop_start_time = crate::timestamp();
     let mut monitor_set = db.get_monitor_setting().unwrap();

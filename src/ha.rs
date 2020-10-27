@@ -144,6 +144,7 @@ impl AllNodes {
 ///
 ///
 pub fn ha_manager(db: web::Data<DbInfo>,  sender: mpsc::Sender<DownNodeInfo>) {
+    info!("ha manager thread start success");
     let mut start_time = crate::timestamp();
     let mut nodes_info = AllNodes::new(&db);
     //info!("node list: {:?}",nodes_info);
