@@ -752,10 +752,16 @@ impl SwitchForNodes {
     ///
     fn get_repl_info(&mut self) -> Result<(), Box<dyn Error>> {
         info!("wait new master seconds_behind is zero");
+        let check_num = 0;
         loop {
             let state = get_node_state_from_host(&self.host)?;
             if state.seconds_behind > 0 { continue; };
             if state.read_master_log_pos - state.exec_master_log_pos > 0 { continue; };
+            if check_num < 3 {
+                check_num += 1;
+                thread::sleep(time::Duration::from_millis(100));
+                continue;
+            }
             info!("get repl info from new master...");
             //self.repl_info = RecoveryInfo::new(self.host.clone(), self.dbport.clone())?;
             self.repl_info = ChangeMasterInfo::new(self.host.clone(), self.dbport.clone(), state.executed_gtid_set.clone());
