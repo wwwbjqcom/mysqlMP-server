@@ -752,7 +752,7 @@ impl SwitchForNodes {
     ///
     fn get_repl_info(&mut self) -> Result<(), Box<dyn Error>> {
         info!("wait new master seconds_behind is zero");
-        let check_num = 0;
+        let mut check_num = 0;
         loop {
             let state = get_node_state_from_host(&self.host)?;
             if state.seconds_behind > 0 { continue; };
