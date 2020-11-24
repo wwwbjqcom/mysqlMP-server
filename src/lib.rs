@@ -155,12 +155,12 @@ pub fn start_web(db: DbInfo) {
     });
 
     //web服务
-   let mut builder =
-       SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-   builder
-       .set_private_key_file("key.pem", SslFiletype::PEM)
-       .unwrap();
-   builder.set_certificate_chain_file("cert.pem").unwrap();
+//   let mut builder =
+//       SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+//   builder
+//       .set_private_key_file("key.pem", SslFiletype::PEM)
+//       .unwrap();
+//   builder.set_certificate_chain_file("cert.pem").unwrap();
 
     HttpServer::new(move|| {
         App::new()
@@ -421,10 +421,10 @@ pub fn start_web(db: DbInfo) {
                     .to(|| HttpResponse::MethodNotAllowed()),
             )
     })
-       .bind_ssl(listen_info, builder)
-       .unwrap()
-        // .bind(listen_info)
-        // .unwrap()
+//       .bind_ssl(listen_info, builder)
+//       .unwrap()
+         .bind(listen_info)
+         .unwrap()
         .run()
         .unwrap();
 }
