@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 structopt="0.3.2"
-actix-web = { version = "1.0.9", features = ["full"] }
+actix-web = { version = "1.0.9", features = ["ssl"] }
 openssl = { version="0.10.25" }
 actix-files = "0.1.6"
 actix-service = "0.4.2"
