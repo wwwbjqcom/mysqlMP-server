@@ -118,7 +118,7 @@ impl RouteInfo {
         let tmp_list = key.split("_");
         let tmp_list = tmp_list.collect::<Vec<&str>>();
         let tmp_time: i64 = tmp_list[1].to_string().parse()?;
-        if (crate::timestamp() - tmp_time) > 20000 as i64 {
+        if (crate::timestamp() - tmp_time) > 3200000 as i64 {
             let err = format!("key: {} recovery status unusual", key);
             return Err(err.into());
         }
