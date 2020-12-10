@@ -293,19 +293,23 @@ impl AllNode {
     }
 
     fn run_check_state(&self, cluster: &ClusterNodeInfo, db: &web::Data<DbInfo>){
-        if let Ok(rinfo) = cluster.route_check(db){
-            for i in 0..10 {
-                if rinfo.write.host == "".to_string(){
-                    thread::sleep(time::Duration::from_secs(1));
-                    continue;
+        let check_state = cluster.route_check(db);
+        match check_state{
+            Ok(rinfo) => {
+                for i in 0..10 {
+                    if rinfo.write.host == "".to_string(){
+                        thread::sleep(time::Duration::from_secs(1));
+                        continue;
+                    }
+                    if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
+                        info!("{:?}", e.to_string());
+                    };
+                    break;
                 }
-                if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
-                    info!("{:?}", e.to_string());
-                };
-                break;
             }
-        }else {
-            info!("route check error for cluster: {:?}", &cluster);
+            Err(e) => {
+                info!("route check Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
+            }
         }
 
         // let check_state = cluster.route_check(db);
