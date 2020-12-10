@@ -293,42 +293,42 @@ impl AllNode {
     }
 
     fn run_check_state(&self, cluster: &ClusterNodeInfo, db: &web::Data<DbInfo>){
-        let check_state = cluster.route_check(db);
-        match check_state{
-            Ok(rinfo) => {
-                for i in 0..10 {
-                    if rinfo.write.host == "".to_string(){
-                        thread::sleep(time::Duration::from_secs(1));
-                        continue;
-                    }
-                    if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
-                        info!("{:?}", e.to_string());
-                    };
-                    break;
-                }
-            }
-            Err(e) => {
-                info!("route check Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
-            }
-        }
-
         // let check_state = cluster.route_check(db);
-        // // info!("{:?}", check_state);
-        // match check_state {
+        // match check_state{
         //     Ok(rinfo) => {
-        //         if rinfo.write.host == "".to_string(){
-        //             thread::sleep(time::Duration::from_secs(1));
-        //             self.run_check_state(cluster, db);
-        //             return;
+        //         for i in 0..10 {
+        //             if rinfo.write.host == "".to_string(){
+        //                 thread::sleep(time::Duration::from_secs(1));
+        //                 continue;
+        //             }
+        //             if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
+        //                 info!("{:?}", e.to_string());
+        //             };
+        //             break;
         //         }
-        //         if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
-        //             info!("{:?}", e.to_string());
-        //         };
         //     }
-        //     Err(_e) => {
-        //         info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
+        //     Err(e) => {
+        //         info!("route check Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
         //     }
         // }
+
+        let check_state = cluster.route_check(db);
+        // info!("{:?}", check_state);
+        match check_state {
+            Ok(rinfo) => {
+                if rinfo.write.host == "".to_string(){
+                    thread::sleep(time::Duration::from_secs(1));
+                    self.run_check_state(cluster, db);
+                    return;
+                }
+                if let Err(e) = db.prefix_put(&PrefixTypeCode::RouteInfo, &rinfo.cluster_name, &rinfo){
+                    info!("{:?}", e.to_string());
+                };
+            }
+            Err(_e) => {
+                info!("Error: {:?} for cluster: {:?}", e.to_string(), &cluster);
+            }
+        }
 
     }
 }
