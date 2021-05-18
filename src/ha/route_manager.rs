@@ -175,6 +175,7 @@ impl ClusterNodeInfo {
 
     fn route_check(&self, db: &web::Data<DbInfo>) -> Result<RouteInfo, Box<dyn Error>> {
         let mut route_info = RouteInfo::new(self.cluster_name.clone());
+        // info!("{:?}", &route_info);
         for node in &self.node_list{
             let cur_state = node.value.get_state(db)?;
             if self.master_check(&node, &cur_state, db, &mut route_info)?{
@@ -188,8 +189,11 @@ impl ClusterNodeInfo {
     ///
     /// 对role为master的节点进行判断， 如果为online直接写入信息，如果宕机则需要检查宕机检查数据是否为实例宕机，如果为实例宕机则需要检查是否已经切换
     /// 因为在实例或者client宕机时则不会更新检查状态，所以宕机之前为master如果未恢复则会一直为master状态
+    ///
+    /// 这里首先判断是否为维护节点， 因为在手动重做时刚开始启动会没有slave线程，客户端会判断该节点为master， 这里不做判断就会把该节点放入路由中
     fn master_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<bool, Box<dyn Error>> {
-        //info!("{:?}", node_status);
+        // info!("{:?}", node_status);
+        if node.value.maintain{return Ok(false)}
         if node_status.role == "master".to_string() {
             //info!("master_check: {:?}",node_status);
             if node.value.online {
@@ -212,7 +216,7 @@ impl ClusterNodeInfo {
     /// 3、如果为实例宕机直接剔除
     /// 4、如果client宕机将不做任何操作， 直接添加对应节点， 这里无法检测hebind值，因为如果client宕机将不会更新状态
     fn slave_check(&self, node: &NodeInfo, node_status: &MysqlState, db: &web::Data<DbInfo>, route_info: &mut RouteInfo) -> Result<(), Box<dyn Error>> {
-        //info!("{:?}", node_status);
+        // info!("slave {:?}", node_status);
         if node.value.maintain{return Ok(())}
         if node_status.role == "slave".to_string() {
             if node.value.online{
